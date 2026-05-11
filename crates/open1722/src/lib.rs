@@ -8,7 +8,10 @@ mod crf;
 pub mod cvf;
 mod error;
 mod pdu;
+mod rvf;
 mod udp;
+
+pub use rvf::Rvf;
 
 pub use crf::Crf;
 
