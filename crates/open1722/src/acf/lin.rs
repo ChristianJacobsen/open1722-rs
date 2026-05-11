@@ -116,4 +116,34 @@ mod tests {
             Err(Error::BufferTooSmall { .. })
         ));
     }
+
+    /// Ported from upstream trunk `unit/test-lin.c::lin_is_valid`.
+    #[test]
+    fn is_valid_corruption_cases() {
+        let mut backing = [0u8; 64];
+        let lin = Lin::initialized(&mut backing[..]).unwrap();
+        assert!(lin.is_valid());
+
+        let zeroed = [0u8; 64];
+        let lin = Lin::new(&zeroed[..]).unwrap();
+        assert!(!lin.is_valid());
+
+        // Header declares 5 quadlets (20 bytes) of payload, buffer holds 12.
+        let mut malformed = [0u8; HEADER_LEN];
+        malformed[0] = AcfMsgType::Lin.as_u8() << 1;
+        malformed[1] = 5;
+        let lin = Lin::new(&malformed[..]).unwrap();
+        assert!(!lin.is_valid());
+    }
+
+    /// Toggle round-trip for the `mtv` flag (disable after enable).
+    #[test]
+    fn message_timestamp_valid_toggle() {
+        let mut backing = [0u8; HEADER_LEN];
+        let mut lin = Lin::initialized(&mut backing[..]).unwrap();
+        lin.set_message_timestamp_valid(true);
+        assert!(lin.is_message_timestamp_valid());
+        lin.set_message_timestamp_valid(false);
+        assert!(!lin.is_message_timestamp_valid());
+    }
 }

@@ -211,4 +211,26 @@ mod tests {
             Err(Error::BufferTooSmall { .. })
         ));
     }
+
+    /// Ported from upstream trunk `unit/test-flexray.c::flexray_is_valid`.
+    #[test]
+    fn is_valid_corruption_cases() {
+        let mut backing = [0u8; 64];
+        let frame = FlexRay::initialized(&mut backing[..]).unwrap();
+        assert!(frame.is_valid());
+
+        // ACF type FLEXRAY is 0, so a zeroed buffer would falsely pass the
+        // type check; use a different type to exercise the type-mismatch branch.
+        let mut wrong_type = [0u8; 64];
+        wrong_type[0] = AcfMsgType::Can.as_u8() << 1;
+        let frame = FlexRay::new(&wrong_type[..]).unwrap();
+        assert!(!frame.is_valid());
+
+        // Header claims 6 quadlets (24 bytes) of payload, buffer holds 16.
+        let mut malformed = [0u8; HEADER_LEN];
+        malformed[0] = AcfMsgType::FlexRay.as_u8() << 1;
+        malformed[1] = 6;
+        let frame = FlexRay::new(&malformed[..]).unwrap();
+        assert!(!frame.is_valid());
+    }
 }

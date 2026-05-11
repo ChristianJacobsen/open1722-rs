@@ -170,4 +170,23 @@ mod tests {
             Err(Error::BufferTooSmall { .. })
         ));
     }
+
+    /// Ported from upstream trunk `unit/test-most.c::most_is_valid`.
+    #[test]
+    fn is_valid_corruption_cases() {
+        let mut backing = [0u8; 64];
+        let most = Most::initialized(&mut backing[..]).unwrap();
+        assert!(most.is_valid());
+
+        let zeroed = [0u8; 64];
+        let most = Most::new(&zeroed[..]).unwrap();
+        assert!(!most.is_valid());
+
+        // Header claims 8 quadlets (32 bytes) of payload, buffer holds 20.
+        let mut malformed = [0u8; HEADER_LEN];
+        malformed[0] = AcfMsgType::Most.as_u8() << 1;
+        malformed[1] = 8;
+        let most = Most::new(&malformed[..]).unwrap();
+        assert!(!most.is_valid());
+    }
 }
