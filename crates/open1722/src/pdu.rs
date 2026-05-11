@@ -1,5 +1,29 @@
 //! Internal scaffolding shared by every format module.
 
+use open1722_sys as sys;
+
+use crate::{Error, Result};
+
+pub(crate) const QUADLET: usize = sys::AVTP_QUADLET_SIZE as usize;
+
+/// Returns `Ok` if `buf_len` can hold a `payload_length`-byte payload after a
+/// `header_len`-byte ACF header, padded to the next quadlet boundary.
+pub(crate) fn check_payload_room(
+    buf_len: usize,
+    payload_length: usize,
+    header_len: usize,
+) -> Result<()> {
+    let padded = payload_length.next_multiple_of(QUADLET);
+    let required = header_len + padded;
+    if buf_len < required {
+        return Err(Error::BufferTooSmall {
+            required,
+            actual: buf_len,
+        });
+    }
+    Ok(())
+}
+
 /// Generates the `Pdu<B>` shell that every IEEE 1722 format module shares: a
 /// generic byte-storage wrapper with construction-time length validation and
 /// raw-pointer accessors for FFI calls.

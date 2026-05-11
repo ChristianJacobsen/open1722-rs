@@ -2,10 +2,8 @@
 
 use open1722_sys as sys;
 
-use crate::pdu::pdu_struct;
-use crate::{Error, Result};
-
-const QUADLET: usize = 4;
+use crate::Result;
+use crate::pdu::{check_payload_room, pdu_struct};
 
 /// Classic CAN or CAN-FD framing.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -15,7 +13,7 @@ pub enum Variant {
 }
 
 impl Variant {
-    fn as_sys(self) -> sys::Avtp_CanVariant_t {
+    pub(crate) fn as_sys(self) -> sys::Avtp_CanVariant_t {
         match self {
             Variant::Classic => sys::Avtp_CanVariant_t::AVTP_CAN_CLASSIC,
             Variant::Fd => sys::Avtp_CanVariant_t::AVTP_CAN_FD,
@@ -205,7 +203,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         payload: &[u8],
         variant: Variant,
     ) -> Result<()> {
-        self.check_payload_room(payload.len())?;
+        check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
         // SAFETY: buffer length validated >= HEADER_LEN + padded payload by
         // `check_payload_room`. The C function reads `payload` despite the
         // non-const pointer in its signature.
@@ -225,7 +223,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
     /// payload bytes only, without touching identifier, flags, or length.
     /// Pair with [`Self::finalize`].
     pub fn set_payload(&mut self, payload: &[u8]) -> Result<()> {
-        self.check_payload_room(payload.len())?;
+        check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
         // SAFETY: buffer length validated by `check_payload_room`. The C
         // function reads `payload` despite the non-const pointer.
         unsafe {
@@ -241,21 +239,9 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
     /// Sets the ACF message length and pad fields for a payload of the given
     /// size. The payload bytes themselves must already be in place.
     pub fn finalize(&mut self, payload_length: u16) -> Result<()> {
-        self.check_payload_room(payload_length as usize)?;
+        check_payload_room(self.0.as_ref().len(), payload_length as usize, HEADER_LEN)?;
         // SAFETY: buffer length validated by `check_payload_room`.
         unsafe { sys::Avtp_Can_Finalize(self.raw_mut(), payload_length) };
-        Ok(())
-    }
-
-    /// Returns `Ok` if the buffer can hold a payload of `payload_length`
-    /// bytes plus padding to the next quadlet boundary.
-    fn check_payload_room(&self, payload_length: usize) -> Result<()> {
-        let padded = (payload_length + QUADLET - 1) & !(QUADLET - 1);
-        let required = HEADER_LEN + padded;
-        let actual = self.0.as_ref().len();
-        if actual < required {
-            return Err(Error::BufferTooSmall { required, actual });
-        }
         Ok(())
     }
 }
@@ -263,6 +249,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Error;
 
     #[test]
     fn classic_frame_round_trip() {
