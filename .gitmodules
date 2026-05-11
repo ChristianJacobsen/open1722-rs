@@ -1,0 +1,3 @@
+[submodule "crates/open1722-sys/vendor/open1722"]
+	path = crates/open1722-sys/vendor/open1722
+	url = https://github.com/COVESA/Open1722.git

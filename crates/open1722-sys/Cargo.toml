@@ -1,0 +1,9 @@
+[package]
+name = "open1722-sys"
+edition.workspace = true
+version.workspace = true
+links = "open1722"
+
+[build-dependencies]
+bindgen = "0.72"
+cc = "1.2"
