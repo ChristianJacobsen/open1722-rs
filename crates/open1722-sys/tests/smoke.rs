@@ -4,9 +4,9 @@
 use core::mem::MaybeUninit;
 use open1722_sys::{
     AVTP_CAN_HEADER_LEN, AVTP_TSCF_HEADER_LEN, Avtp_Can_GetCanBusId, Avtp_Can_GetCanIdentifier,
-    Avtp_Can_GetMtv, Avtp_Can_Init, Avtp_Can_SetCanBusId, Avtp_Can_SetCanIdentifier,
-    Avtp_Can_t, Avtp_Tscf_GetSequenceNum, Avtp_Tscf_GetStreamId, Avtp_Tscf_Init,
-    Avtp_Tscf_SetSequenceNum, Avtp_Tscf_SetStreamId, Avtp_Tscf_t,
+    Avtp_Can_GetMtv, Avtp_Can_Init, Avtp_Can_SetCanBusId, Avtp_Can_SetCanIdentifier, Avtp_Can_t,
+    Avtp_Tscf_GetSequenceNum, Avtp_Tscf_GetStreamId, Avtp_Tscf_Init, Avtp_Tscf_SetSequenceNum,
+    Avtp_Tscf_SetStreamId, Avtp_Tscf_t,
 };
 
 #[test]
