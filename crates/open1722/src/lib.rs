@@ -5,6 +5,7 @@ pub mod acf;
 mod common;
 mod common_header;
 mod crf;
+pub mod cvf;
 mod error;
 mod pdu;
 mod udp;
