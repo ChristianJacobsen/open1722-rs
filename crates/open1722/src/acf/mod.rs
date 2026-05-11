@@ -2,6 +2,7 @@
 
 pub mod can;
 pub mod flexray;
+pub mod gpc;
 pub mod lin;
 pub mod most;
 pub mod ntscf;
