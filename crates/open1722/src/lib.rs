@@ -1,5 +1,6 @@
 //! Rust bindings for the Open1722 implementation of IEEE 1722.
 
+pub mod aaf;
 pub mod acf;
 mod common;
 mod common_header;
