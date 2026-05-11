@@ -6,4 +6,5 @@ pub mod gpc;
 pub mod lin;
 pub mod most;
 pub mod ntscf;
+pub mod sensor;
 pub mod tscf;
