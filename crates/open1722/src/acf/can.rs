@@ -58,38 +58,40 @@ impl<B: AsRef<[u8]>> Can<B> {
         unsafe { sys::Avtp_Can_GetPad(self.raw()) }
     }
 
-    /// Message timestamp valid.
-    pub fn mtv(&self) -> bool {
+    /// `mtv`: `message_timestamp` carries a meaningful value.
+    pub fn is_message_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_GetMtv(self.raw()) != 0 }
     }
 
-    /// Remote transmission request.
-    pub fn rtr(&self) -> bool {
+    /// `rtr`: this frame requests data from another node rather than
+    /// carrying data itself.
+    pub fn is_remote_frame(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_GetRtr(self.raw()) != 0 }
     }
 
-    /// Extended frame format (29-bit identifier).
-    pub fn eff(&self) -> bool {
+    /// `eff`: the frame carries a 29-bit extended identifier rather than
+    /// the 11-bit standard identifier.
+    pub fn is_extended(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_GetEff(self.raw()) != 0 }
     }
 
-    /// Bit rate switch (CAN-FD).
-    pub fn brs(&self) -> bool {
+    /// `brs`: the CAN-FD data phase used a switched (higher) bit rate.
+    pub fn is_bit_rate_switched(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_GetBrs(self.raw()) != 0 }
     }
 
-    /// FD format indicator (CAN-FD).
-    pub fn fdf(&self) -> bool {
+    /// `fdf`: the frame uses CAN-FD framing.
+    pub fn is_fd_format(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_GetFdf(self.raw()) != 0 }
     }
 
-    /// Error state indicator.
-    pub fn esi(&self) -> bool {
+    /// `esi`: the transmitter is in the error-passive state.
+    pub fn is_error_state_indicator(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_GetEsi(self.raw()) != 0 }
     }
@@ -128,7 +130,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         unsafe { sys::Avtp_Can_SetMessageTimestamp(self.raw_mut(), value) };
     }
 
-    pub fn set_mtv(&mut self, value: bool) {
+    pub fn set_message_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe {
             if value {
@@ -139,7 +141,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         }
     }
 
-    pub fn set_rtr(&mut self, value: bool) {
+    pub fn set_remote_frame(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe {
             if value {
@@ -150,7 +152,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         }
     }
 
-    pub fn set_eff(&mut self, value: bool) {
+    pub fn set_extended(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe {
             if value {
@@ -161,7 +163,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         }
     }
 
-    pub fn set_brs(&mut self, value: bool) {
+    pub fn set_bit_rate_switched(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe {
             if value {
@@ -172,7 +174,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         }
     }
 
-    pub fn set_fdf(&mut self, value: bool) {
+    pub fn set_fd_format(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe {
             if value {
@@ -183,7 +185,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         }
     }
 
-    pub fn set_esi(&mut self, value: bool) {
+    pub fn set_error_state_indicator(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe {
             if value {
@@ -272,21 +274,21 @@ mod tests {
 
         assert_eq!(can.bus_id(), 4);
         assert_eq!(can.identifier(), 0x1AB);
-        assert!(!can.fdf());
-        assert!(!can.eff());
+        assert!(!can.is_fd_format());
+        assert!(!can.is_extended());
         assert_eq!(can.payload(), &[0x11, 0x22]);
         assert!(can.is_valid());
     }
 
     #[test]
-    fn fd_frame_sets_fdf_and_eff_for_extended_id() {
+    fn fd_frame_marks_format_and_extended_id() {
         let mut backing = [0u8; HEADER_LEN + 16];
         let mut can = Can::initialized(&mut backing[..]).unwrap();
         can.create_acf_message(0x1234_5678, &[0xAA; 8], Variant::Fd)
             .unwrap();
 
-        assert!(can.fdf());
-        assert!(can.eff());
+        assert!(can.is_fd_format());
+        assert!(can.is_extended());
         assert_eq!(can.payload(), &[0xAA; 8]);
     }
 
@@ -295,22 +297,22 @@ mod tests {
         let mut backing = [0u8; HEADER_LEN];
         let mut can = Can::initialized(&mut backing[..]).unwrap();
 
-        can.set_mtv(true);
-        can.set_rtr(true);
-        can.set_eff(true);
-        can.set_brs(true);
-        can.set_fdf(true);
-        can.set_esi(true);
+        can.set_message_timestamp_valid(true);
+        can.set_remote_frame(true);
+        can.set_extended(true);
+        can.set_bit_rate_switched(true);
+        can.set_fd_format(true);
+        can.set_error_state_indicator(true);
 
-        assert!(can.mtv());
-        assert!(can.rtr());
-        assert!(can.eff());
-        assert!(can.brs());
-        assert!(can.fdf());
-        assert!(can.esi());
+        assert!(can.is_message_timestamp_valid());
+        assert!(can.is_remote_frame());
+        assert!(can.is_extended());
+        assert!(can.is_bit_rate_switched());
+        assert!(can.is_fd_format());
+        assert!(can.is_error_state_indicator());
 
-        can.set_mtv(false);
-        assert!(!can.mtv());
+        can.set_message_timestamp_valid(false);
+        assert!(!can.is_message_timestamp_valid());
     }
 
     #[test]
