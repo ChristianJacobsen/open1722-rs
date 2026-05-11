@@ -56,6 +56,7 @@ macro_rules! pdu_struct {
                 /// Wraps `buf` and zero-initializes the header. Use on the talker side.
                 pub fn initialized(buf: B) -> $crate::Result<Self> {
                     let mut pdu = Self::new(buf)?;
+                    pdu.0.as_mut()[..HEADER_LEN].fill(0);
                     // SAFETY: buffer length validated >= HEADER_LEN at construction.
                     unsafe { $init_fn(pdu.raw_mut()) };
                     ::core::result::Result::Ok(pdu)
