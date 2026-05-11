@@ -367,4 +367,51 @@ mod tests {
             Err(Error::BufferTooSmall { .. })
         ));
     }
+
+    /// Ported from upstream `unit/test-can.c::can_set_payload`: exercises every
+    /// payload length 0..8 and checks the pad and length fields encode the
+    /// right values for each alignment.
+    #[test]
+    fn payload_sweep_sets_pad_and_length() {
+        let payload = [0u8, 1, 2, 3, 4, 5, 6, 7];
+        for len in 0..=payload.len() {
+            let mut backing = [0u8; HEADER_LEN + 16];
+            let mut can = Can::initialized(&mut backing[..]).unwrap();
+            can.create_acf_message(0x123, &payload[..len], Variant::Classic)
+                .unwrap();
+
+            assert_eq!(can.payload(), &payload[..len], "len = {len}");
+
+            // Pad field is the 2-bit count of trailing pad bytes (0..=3).
+            let expected_pad = ((4 - (len % 4)) & 0x3) as u8;
+            assert_eq!(can.pad(), expected_pad, "len = {len}");
+
+            // ACF length includes header (4 quadlets) plus padded payload.
+            let expected_len = 4 + len.div_ceil(4);
+            assert_eq!(can.acf_msg_length() as usize, expected_len, "len = {len}");
+        }
+    }
+
+    /// Ported from upstream `unit/test-can.c::can_is_valid`.
+    #[test]
+    fn is_valid_corruption_cases() {
+        // Initialized PDU in a sufficient buffer.
+        let mut backing = [0u8; 64];
+        let can = Can::initialized(&mut backing[..]).unwrap();
+        assert!(can.is_valid());
+
+        // Zeroed buffer: ACF type byte is wrong (not CAN).
+        let zeroed = [0u8; 64];
+        let can = Can::new(&zeroed[..]).unwrap();
+        assert!(!can.is_valid());
+
+        // Header declares a length larger than the wrapping buffer: type=CAN
+        // (1) shifted into the top 7 bits of byte 0, length=6 quadlets (24
+        // bytes) in the low 9 bits straddling bytes 0 and 1.
+        let mut malformed = [0u8; HEADER_LEN];
+        malformed[0] = 1 << 1;
+        malformed[1] = 6;
+        let can = Can::new(&malformed[..]).unwrap();
+        assert!(!can.is_valid());
+    }
 }
