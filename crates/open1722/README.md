@@ -1,5 +1,9 @@
 # open1722
 
+[![Crates.io](https://img.shields.io/crates/v/open1722.svg)](https://crates.io/crates/open1722)
+[![Docs.rs](https://docs.rs/open1722/badge.svg)](https://docs.rs/open1722)
+[![CI](https://github.com/ChristianJacobsen/open1722-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/ChristianJacobsen/open1722-rs/actions/workflows/ci.yml)
+
 Rust bindings for [COVESA Open1722](https://github.com/COVESA/Open1722), an
 implementation of the IEEE 1722 (AVTP) standard for streaming audio,
 video, clock reference, and automotive bus traffic (CAN, LIN, FlexRay,

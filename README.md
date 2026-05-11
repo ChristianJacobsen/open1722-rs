@@ -1,5 +1,7 @@
 # open1722-rs
 
+[![CI](https://github.com/ChristianJacobsen/open1722-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/ChristianJacobsen/open1722-rs/actions/workflows/ci.yml)
+
 Rust bindings for [COVESA Open1722](https://github.com/COVESA/Open1722), an
 implementation of the IEEE 1722 (AVTP) standard. Pinned to upstream tag
 `v0.9.0` (September 2025).

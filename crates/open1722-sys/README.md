@@ -1,5 +1,9 @@
 # open1722-sys
 
+[![Crates.io](https://img.shields.io/crates/v/open1722-sys.svg)](https://crates.io/crates/open1722-sys)
+[![Docs.rs](https://docs.rs/open1722-sys/badge.svg)](https://docs.rs/open1722-sys)
+[![CI](https://github.com/ChristianJacobsen/open1722-rs/actions/workflows/ci.yml/badge.svg)](https://github.com/ChristianJacobsen/open1722-rs/actions/workflows/ci.yml)
+
 Raw FFI bindings to [COVESA Open1722](https://github.com/COVESA/Open1722).
 Vendors the upstream C source as a git submodule, builds it via the `cc`
 crate, generates Rust signatures via `bindgen`.
