@@ -1,0 +1,41 @@
+[package]
+name = "open1722-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+arbitrary = { version = "1", features = ["derive"] }
+open1722 = { path = "../crates/open1722" }
+
+[[bin]]
+name = "vss_random"
+path = "fuzz_targets/vss_random.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vss_structured"
+path = "fuzz_targets/vss_structured.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "vss_roundtrip"
+path = "fuzz_targets/vss_roundtrip.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "dispatch"
+path = "fuzz_targets/dispatch.rs"
+test = false
+doc = false
+bench = false
