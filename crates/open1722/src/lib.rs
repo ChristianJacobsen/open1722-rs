@@ -1,7 +1,11 @@
 //! Rust bindings for the Open1722 implementation of IEEE 1722.
 
 mod common;
+mod common_header;
 mod error;
+mod udp;
 
 pub use common::{AcfMsgType, Subtype};
+pub use common_header::CommonHeader;
 pub use error::{Error, Result};
+pub use udp::Udp;
