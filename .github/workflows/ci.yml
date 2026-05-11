@@ -80,4 +80,4 @@ jobs:
       - uses: taiki-e/install-action@fa0dd4cd0a40696e6f9766370614a5ce482e6aa8 # v2.77.5
         with:
           tool: cargo-fuzz
-      - run: cargo +nightly fuzz build
+      - run: cargo +nightly fuzz build --target x86_64-unknown-linux-gnu
