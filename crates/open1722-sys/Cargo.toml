@@ -7,6 +7,18 @@ authors.workspace = true
 repository.workspace = true
 license = "(MIT OR Apache-2.0) AND BSD-3-Clause"
 links = "open1722"
+include = [
+    "/Cargo.toml",
+    "/README.md",
+    "/LICENSE-*",
+    "/build.rs",
+    "/src/**/*",
+    "/tests/**/*",
+    "/vendor/open1722/LICENSE",
+    "/vendor/open1722/README.md",
+    "/vendor/open1722/include/**/*",
+    "/vendor/open1722/src/**/*",
+]
 
 [build-dependencies]
 bindgen = "0.72"
