@@ -1,7 +1,10 @@
 [package]
 name = "open1722"
+description = "Rust bindings for COVESA Open1722 (IEEE 1722 / AVTP) covering AVTP stream formats, ACF messages, and the COVESA VSS mapping."
 edition.workspace = true
 version.workspace = true
+authors.workspace = true
+license = "MIT OR Apache-2.0"
 
 [dependencies]
 open1722-sys = { path = "../open1722-sys", version = "0.9.0" }

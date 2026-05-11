@@ -1,7 +1,10 @@
 [package]
 name = "open1722-sys"
+description = "Low-level FFI bindings to COVESA Open1722 (IEEE 1722 / AVTP)."
 edition.workspace = true
 version.workspace = true
+authors.workspace = true
+license = "(MIT OR Apache-2.0) AND BSD-3-Clause"
 links = "open1722"
 
 [build-dependencies]
