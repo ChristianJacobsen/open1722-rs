@@ -4,6 +4,7 @@ description = "Rust bindings for COVESA Open1722 (IEEE 1722 / AVTP) covering AVT
 edition.workspace = true
 version.workspace = true
 authors.workspace = true
+repository.workspace = true
 license = "MIT OR Apache-2.0"
 
 [dependencies]

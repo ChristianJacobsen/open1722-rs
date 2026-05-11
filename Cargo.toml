@@ -7,3 +7,4 @@ resolver = "3"
 edition = "2024"
 version = "0.9.0"
 authors = ["Christian A. Jacobsen <christian@jenkins.no>"]
+repository = "https://github.com/ChristianJacobsen/open1722-rs"
