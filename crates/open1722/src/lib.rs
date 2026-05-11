@@ -4,9 +4,12 @@ pub mod aaf;
 pub mod acf;
 mod common;
 mod common_header;
+mod crf;
 mod error;
 mod pdu;
 mod udp;
+
+pub use crf::Crf;
 
 pub use common::{AcfMsgType, Subtype};
 pub use common_header::CommonHeader;
