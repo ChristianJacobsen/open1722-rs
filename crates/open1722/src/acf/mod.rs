@@ -2,6 +2,7 @@
 
 pub mod can;
 pub mod can_brief;
+pub mod custom;
 pub mod flexray;
 pub mod gpc;
 pub mod lin;
