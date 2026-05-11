@@ -7,4 +7,5 @@ pub mod lin;
 pub mod most;
 pub mod ntscf;
 pub mod sensor;
+pub mod sensor_brief;
 pub mod tscf;
