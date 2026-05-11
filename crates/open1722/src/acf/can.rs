@@ -2,9 +2,9 @@
 
 use open1722_sys as sys;
 
+use crate::pdu::pdu_struct;
 use crate::{Error, Result};
 
-pub const HEADER_LEN: usize = sys::AVTP_CAN_HEADER_LEN as usize;
 const QUADLET: usize = 4;
 
 /// Classic CAN or CAN-FD framing.
@@ -23,14 +23,15 @@ impl Variant {
     }
 }
 
-pub struct Can<B>(B);
+pdu_struct! {
+    pub struct Can {
+        c_type: sys::Avtp_Can_t,
+        header_len: sys::AVTP_CAN_HEADER_LEN,
+        init: sys::Avtp_Can_Init,
+    }
+}
 
 impl<B: AsRef<[u8]>> Can<B> {
-    pub fn new(buf: B) -> Result<Self> {
-        check_len(buf.as_ref().len())?;
-        Ok(Self(buf))
-    }
-
     pub fn bus_id(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_GetCanBusId(self.raw()) }
@@ -109,29 +110,9 @@ impl<B: AsRef<[u8]>> Can<B> {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_IsValid(self.raw(), self.0.as_ref().len()) != 0 }
     }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-
-    pub fn into_inner(self) -> B {
-        self.0
-    }
-
-    fn raw(&self) -> *const sys::Avtp_Can_t {
-        self.0.as_ref().as_ptr() as *const sys::Avtp_Can_t
-    }
 }
 
 impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
-    /// Wraps `buf` and zero-initializes the header, including the ACF type tag.
-    pub fn initialized(buf: B) -> Result<Self> {
-        let mut pdu = Self::new(buf)?;
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_Init(pdu.raw_mut()) };
-        Ok(pdu)
-    }
-
     pub fn set_bus_id(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_SetCanBusId(self.raw_mut(), value) };
@@ -264,14 +245,6 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         Ok(())
     }
 
-    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-
-    fn raw_mut(&mut self) -> *mut sys::Avtp_Can_t {
-        self.0.as_mut().as_mut_ptr() as *mut sys::Avtp_Can_t
-    }
-
     /// Returns `Ok` if the buffer can hold a payload of `payload_length`
     /// bytes plus padding to the next quadlet boundary.
     fn check_payload_room(&self, payload_length: usize) -> Result<()> {
@@ -283,16 +256,6 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         }
         Ok(())
     }
-}
-
-fn check_len(actual: usize) -> Result<()> {
-    if actual < HEADER_LEN {
-        return Err(Error::BufferTooSmall {
-            required: HEADER_LEN,
-            actual,
-        });
-    }
-    Ok(())
 }
 
 #[cfg(test)]

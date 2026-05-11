@@ -5,18 +5,17 @@
 
 use open1722_sys as sys;
 
-use crate::{Error, Result, Subtype};
+use crate::pdu::pdu_struct;
+use crate::{Result, Subtype};
 
-pub const HEADER_LEN: usize = sys::AVTP_COMMON_HEADER_LEN as usize;
-
-pub struct CommonHeader<B>(B);
+pdu_struct! {
+    pub struct CommonHeader {
+        c_type: sys::Avtp_CommonHeader_t,
+        header_len: sys::AVTP_COMMON_HEADER_LEN,
+    }
+}
 
 impl<B: AsRef<[u8]>> CommonHeader<B> {
-    pub fn new(buf: B) -> Result<Self> {
-        check_len(buf.as_ref().len())?;
-        Ok(Self(buf))
-    }
-
     pub fn subtype(&self) -> Result<Subtype> {
         Subtype::try_from(self.subtype_raw())
     }
@@ -35,18 +34,6 @@ impl<B: AsRef<[u8]>> CommonHeader<B> {
     pub fn h(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_CommonHeader_GetH(self.raw()) != 0 }
-    }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-
-    pub fn into_inner(self) -> B {
-        self.0
-    }
-
-    fn raw(&self) -> *const sys::Avtp_CommonHeader_t {
-        self.0.as_ref().as_ptr() as *const sys::Avtp_CommonHeader_t
     }
 }
 
@@ -69,29 +56,12 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CommonHeader<B> {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_CommonHeader_SetH(self.raw_mut(), value as u8) };
     }
-
-    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-
-    fn raw_mut(&mut self) -> *mut sys::Avtp_CommonHeader_t {
-        self.0.as_mut().as_mut_ptr() as *mut sys::Avtp_CommonHeader_t
-    }
-}
-
-fn check_len(actual: usize) -> Result<()> {
-    if actual < HEADER_LEN {
-        return Err(Error::BufferTooSmall {
-            required: HEADER_LEN,
-            actual,
-        });
-    }
-    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Error;
 
     #[test]
     fn dispatches_subtype() {

@@ -2,56 +2,27 @@
 
 use open1722_sys as sys;
 
-use crate::{Error, Result};
+use crate::pdu::pdu_struct;
 
-pub const HEADER_LEN: usize = sys::AVTP_UDP_HEADER_LEN as usize;
-
-pub struct Udp<B>(B);
+pdu_struct! {
+    pub struct Udp {
+        c_type: sys::Avtp_Udp_t,
+        header_len: sys::AVTP_UDP_HEADER_LEN,
+        init: sys::Avtp_Udp_Init,
+    }
+}
 
 impl<B: AsRef<[u8]>> Udp<B> {
-    pub fn new(buf: B) -> Result<Self> {
-        check_len(buf.as_ref().len())?;
-        Ok(Self(buf))
-    }
-
     pub fn encapsulation_seq_no(&self) -> u32 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Udp_GetEncapsulationSeqNo(self.raw()) }
     }
-
-    pub fn as_bytes(&self) -> &[u8] {
-        self.0.as_ref()
-    }
-
-    pub fn into_inner(self) -> B {
-        self.0
-    }
-
-    fn raw(&self) -> *const sys::Avtp_Udp_t {
-        self.0.as_ref().as_ptr() as *const sys::Avtp_Udp_t
-    }
 }
 
 impl<B: AsRef<[u8]> + AsMut<[u8]>> Udp<B> {
-    /// Wraps `buf` and zero-initializes the header. Use on the talker side.
-    pub fn initialized(buf: B) -> Result<Self> {
-        let mut pdu = Self::new(buf)?;
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Udp_Init(pdu.raw_mut()) };
-        Ok(pdu)
-    }
-
     pub fn set_encapsulation_seq_no(&mut self, value: u32) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Udp_SetEncapsulationSeqNo(self.raw_mut(), value) };
-    }
-
-    pub fn as_bytes_mut(&mut self) -> &mut [u8] {
-        self.0.as_mut()
-    }
-
-    fn raw_mut(&mut self) -> *mut sys::Avtp_Udp_t {
-        self.0.as_mut().as_mut_ptr() as *mut sys::Avtp_Udp_t
     }
 }
 
@@ -61,19 +32,10 @@ impl Default for Udp<[u8; HEADER_LEN]> {
     }
 }
 
-fn check_len(actual: usize) -> Result<()> {
-    if actual < HEADER_LEN {
-        return Err(Error::BufferTooSmall {
-            required: HEADER_LEN,
-            actual,
-        });
-    }
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::Error;
 
     #[test]
     fn default_buffer_is_header_sized() {
