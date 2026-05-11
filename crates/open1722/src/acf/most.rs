@@ -71,6 +71,12 @@ impl<B: AsRef<[u8]>> Most<B> {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Most_GetMtv(self.raw()) != 0 }
     }
+
+    /// Structural validity check (length field consistent with buffer size).
+    pub fn is_valid(&self) -> bool {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe { sys::Avtp_Most_IsValid(self.raw(), self.0.as_ref().len()) != 0 }
+    }
 }
 
 impl<B: AsRef<[u8]> + AsMut<[u8]>> Most<B> {
