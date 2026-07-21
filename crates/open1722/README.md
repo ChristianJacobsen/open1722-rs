@@ -9,7 +9,7 @@ implementation of the IEEE 1722 (AVTP) standard for streaming audio,
 video, clock reference, and automotive bus traffic (CAN, LIN, FlexRay,
 MOST, GPC, sensor data) over a network.
 
-Pinned to upstream tag `v0.9.0` (September 2025).
+Pinned to upstream tag `v0.9.1` (July 2026).
 
 ## Format wrapper pattern
 
@@ -40,11 +40,15 @@ AVTP Control Format (ACF) carriers and messages:
 
 - TSCF, NTSCF (time- and non-time-synchronous carriers)
 - CAN, CAN Brief
+- CAN V2, CAN Brief V2 (IEEE 1722-2025 framing)
+- CAN XL, CAN XL Brief
 - LIN
 - FlexRay
 - MOST
 - GPC (general-purpose control)
 - Sensor, Sensor Brief
+- GBB, ABB (IEEE 1722-2025 generic / abbreviated byte bus)
+- GISF (IEEE 1722-2025 generic image sensor format)
 
 Custom formats (outside IEEE Std 1722-2016):
 

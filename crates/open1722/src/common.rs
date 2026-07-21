@@ -67,7 +67,7 @@ impl TryFrom<u8> for Subtype {
     }
 }
 
-/// ACF message type (see IEEE Std 1722-2016 Table 22).
+/// ACF message type (see IEEE Std 1722-2025 Table 22).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum AcfMsgType {
@@ -81,8 +81,20 @@ pub enum AcfMsgType {
     Parallel = 0x7,
     Sensor = 0x8,
     SensorBrief = 0x9,
-    Aecp = 0x10,
-    Ancillary = 0x11,
+    Aecp = 0x0A,
+    Ancillary = 0x0B,
+    Gisf = 0x0C,
+    ByteBus = 0x0D,
+    ByteBusBrief = 0x0E,
+    I2c = 0x0F,
+    I2cBrief = 0x10,
+    CanXl = 0x11,
+    CanXlBrief = 0x12,
+    CanV2 = 0x21,
+    CanBriefV2 = 0x22,
+    LinV2 = 0x23,
+    Checksum = 0x76,
+    Crc = 0x77,
 }
 
 impl AcfMsgType {
@@ -106,8 +118,20 @@ impl TryFrom<u8> for AcfMsgType {
             0x7 => Self::Parallel,
             0x8 => Self::Sensor,
             0x9 => Self::SensorBrief,
-            0x10 => Self::Aecp,
-            0x11 => Self::Ancillary,
+            0x0A => Self::Aecp,
+            0x0B => Self::Ancillary,
+            0x0C => Self::Gisf,
+            0x0D => Self::ByteBus,
+            0x0E => Self::ByteBusBrief,
+            0x0F => Self::I2c,
+            0x10 => Self::I2cBrief,
+            0x11 => Self::CanXl,
+            0x12 => Self::CanXlBrief,
+            0x21 => Self::CanV2,
+            0x22 => Self::CanBriefV2,
+            0x23 => Self::LinV2,
+            0x76 => Self::Checksum,
+            0x77 => Self::Crc,
             other => {
                 return Err(Error::InvalidValue {
                     field: "ACF message type",
@@ -140,7 +164,7 @@ mod tests {
 
     #[test]
     fn acf_msg_type_round_trip() {
-        for v in [0x0u8, 0x1, 0x9, 0x11] {
+        for v in [0x0u8, 0x1, 0x9, 0x0B, 0x11, 0x22] {
             let t = AcfMsgType::try_from(v).unwrap();
             assert_eq!(t.as_u8(), v);
         }

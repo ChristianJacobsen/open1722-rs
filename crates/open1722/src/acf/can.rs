@@ -123,6 +123,15 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         unsafe { sys::Avtp_Can_SetCanIdentifier(self.raw_mut(), value) };
     }
 
+    /// Sets the ACF message length field directly (in quadlets). Normally
+    /// not needed: [`Self::create_acf_message`] and [`Self::finalize`]
+    /// compute this from the payload size. Exposed for tests and for
+    /// callers that pre-allocate the wire layout by hand.
+    pub fn set_acf_msg_length(&mut self, value: u16) {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe { sys::Avtp_Can_SetAcfMsgLength(self.raw_mut(), value) };
+    }
+
     pub fn set_message_timestamp(&mut self, value: u64) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Can_SetMessageTimestamp(self.raw_mut(), value) };
@@ -347,9 +356,18 @@ mod tests {
     /// Ported from upstream `unit/test-can.c::can_is_valid`.
     #[test]
     fn is_valid_corruption_cases() {
-        // Initialized PDU in a sufficient buffer.
+        // An Init-only PDU has AcfMsgLength == 0 -- i.e. it declares a frame
+        // shorter than its own header. Per IEEE 1722 ACF wire format that is
+        // not a valid frame, so IsValid must reject it.
         let mut backing = [0u8; 64];
         let can = Can::initialized(&mut backing[..]).unwrap();
+        assert!(!can.is_valid());
+
+        // A properly-formed classic CAN frame with an 8-byte payload is valid.
+        let mut backing = [0u8; 64];
+        let mut can = Can::initialized(&mut backing[..]).unwrap();
+        can.create_acf_message(0x123, &[0, 1, 2, 3, 4, 5, 6, 7], Variant::Classic)
+            .unwrap();
         assert!(can.is_valid());
 
         // Zeroed buffer: ACF type byte is wrong (not CAN).
@@ -357,13 +375,12 @@ mod tests {
         let can = Can::new(&zeroed[..]).unwrap();
         assert!(!can.is_valid());
 
-        // Header declares a length larger than the wrapping buffer: type=CAN
-        // (1) shifted into the top 7 bits of byte 0, length=6 quadlets (24
-        // bytes) in the low 9 bits straddling bytes 0 and 1.
-        let mut malformed = [0u8; HEADER_LEN];
-        malformed[0] = 1 << 1;
-        malformed[1] = 6;
-        let can = Can::new(&malformed[..]).unwrap();
-        assert!(!can.is_valid());
+        // Valid IEEE 1722 CAN frame: AcfMsgLength=6 quadlets (24 bytes),
+        // buffer holds 25. Payload = 24 - 16 header = 8 bytes (classic max).
+        let mut backing = [0u8; 64];
+        let mut can = Can::initialized(&mut backing[..]).unwrap();
+        can.set_acf_msg_length(6);
+        let can = Can::new(&backing[..25]).unwrap();
+        assert!(can.is_valid());
     }
 }

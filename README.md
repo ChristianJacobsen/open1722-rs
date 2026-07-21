@@ -4,7 +4,7 @@
 
 Rust bindings for [COVESA Open1722](https://github.com/COVESA/Open1722), an
 implementation of the IEEE 1722 (AVTP) standard. Pinned to upstream tag
-`v0.9.0` (September 2025).
+`v0.9.1` (July 2026).
 
 ## Crates
 

@@ -8,5 +8,5 @@ repository.workspace = true
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-open1722-sys = { path = "../open1722-sys", version = "0.9.0" }
+open1722-sys = { path = "../open1722-sys", version = "0.9.1" }
 thiserror = "2"

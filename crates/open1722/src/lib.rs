@@ -22,10 +22,15 @@
 //! - [`acf::tscf`] / [`acf::ntscf`]: time- and non-time-synchronous
 //!   carriers for one or more ACF messages.
 //! - [`acf::can`], [`acf::can_brief`]: CAN bus messages.
+//! - [`acf::can_v2`], [`acf::can_brief_v2`]: IEEE 1722-2025 CAN framing.
+//! - [`acf::can_xl`], [`acf::can_xl_brief`]: CAN XL messages.
 //! - [`acf::lin`], [`acf::flexray`], [`acf::most`]: other automotive
 //!   field buses.
 //! - [`acf::gpc`]: general-purpose control.
 //! - [`acf::sensor`], [`acf::sensor_brief`]: sensor data.
+//! - [`acf::gbb`], [`acf::abb`]: IEEE 1722-2025 generic / abbreviated
+//!   byte bus.
+//! - [`acf::gisf`]: IEEE 1722-2025 generic image sensor format.
 //!
 //! Custom formats (outside IEEE Std 1722-2016):
 //!

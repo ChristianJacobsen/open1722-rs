@@ -21,7 +21,7 @@ fn main() {
     let src = staged.join("src/avtp");
 
     compile(&src, &include);
-    generate_bindings(&include);
+    generate_bindings(&include, &out_dir);
 
     println!("cargo:rerun-if-changed=build.rs");
     println!("cargo:rerun-if-changed={}", vendor.display());
@@ -50,19 +50,19 @@ fn stage_and_patch(vendor: &Path, out_dir: &Path) -> PathBuf {
 
     // SensorBrief.h reuses `AVTP_SENSOR_HEADER_LEN` and `AVTP_SENSOR_FIELD_MAX`
     // from Sensor.h with conflicting values. Rename to the BRIEF variants in
-    // both header and matching .c.
-    for file in [
-        "include/avtp/acf/SensorBrief.h",
-        "src/avtp/acf/SensorBrief.c",
-    ] {
-        patch_all(
-            &staged.join(file),
-            &[
-                ("AVTP_SENSOR_HEADER_LEN", "AVTP_SENSOR_BRIEF_HEADER_LEN"),
-                ("AVTP_SENSOR_FIELD_MAX", "AVTP_SENSOR_BRIEF_FIELD_MAX"),
-            ],
-        );
-    }
+    // both header and matching .c. The .c only references the header-length
+    // macro (not the field-max), so apply the two replacements separately.
+    patch_all(
+        &staged.join("include/avtp/acf/SensorBrief.h"),
+        &[
+            ("AVTP_SENSOR_HEADER_LEN", "AVTP_SENSOR_BRIEF_HEADER_LEN"),
+            ("AVTP_SENSOR_FIELD_MAX", "AVTP_SENSOR_BRIEF_FIELD_MAX"),
+        ],
+    );
+    patch_all(
+        &staged.join("src/avtp/acf/SensorBrief.c"),
+        &[("AVTP_SENSOR_HEADER_LEN", "AVTP_SENSOR_BRIEF_HEADER_LEN")],
+    );
 
     staged
 }
@@ -108,8 +108,17 @@ fn compile(src: &Path, include: &Path) {
         .compile("open1722");
 }
 
-fn generate_bindings(include: &Path) {
+fn generate_bindings(include: &Path, out_dir: &Path) {
     let headers = collect_files(&include.join("avtp"), "h");
+
+    // The upstream headers define all getters/setters as `static inline`
+    // functions whose bodies reference field-descriptor tables and helper
+    // macros (`GET_*_FIELD`, `Avtp_GetField`, ...) that bindgen cannot
+    // translate directly. `wrap_static_fns` makes bindgen emit a C source
+    // file of non-`static` trampolines that call the inline functions; we
+    // compile and link that file below so the Rust side sees ordinary
+    // `extern "C"` symbols.
+    let wrapper_c = out_dir.join("open1722_static_fns.c");
 
     let mut builder = bindgen::Builder::default()
         .clang_arg(format!("-I{}", include.display()))
@@ -118,6 +127,8 @@ fn generate_bindings(include: &Path) {
         .derive_copy(true)
         .derive_debug(true)
         .layout_tests(true)
+        .wrap_static_fns(true)
+        .wrap_static_fns_path(&wrapper_c)
         .allowlist_type("Avtp_.*")
         .allowlist_function("Avtp_.*")
         .allowlist_var("AVTP_.*")
@@ -135,8 +146,17 @@ fn generate_bindings(include: &Path) {
     }
 
     let bindings = builder.generate().expect("bindgen failed");
-    let out = PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs");
+    let out = out_dir.join("bindings.rs");
     bindings.write_to_file(out).expect("write bindings.rs");
+
+    // Compile the trampoline file alongside the vendored sources so the
+    // inline functions are reachable from Rust as ordinary extern symbols.
+    cc::Build::new()
+        .file(&wrapper_c)
+        .include(include)
+        .std("c99")
+        .warnings(false)
+        .compile("open1722_static_fns");
 }
 
 fn collect_files(root: &Path, ext: &str) -> Vec<PathBuf> {
