@@ -288,6 +288,18 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Vss<B> {
         Ok(())
     }
 
+    /// Sets the ACF message length field directly (in quadlets).
+    /// Normally not needed: [`Self::set_payload_length`] derives this
+    /// from the written path and data sections. Exposed for test frames
+    /// that deliberately declare a different length.
+    pub fn set_acf_msg_length(&mut self, value: u16) {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction;
+        // the common-header write stays within the first quadlet.
+        unsafe {
+            sys::Avtp_AcfCommon_SetAcfMsgLength(self.raw_mut() as *mut sys::Avtp_AcfCommon_t, value)
+        };
+    }
+
     /// Sets the ACF length and pad fields for a VSS payload of the given
     /// size (path + data bytes), zeroing the pad bytes.
     ///
