@@ -27,9 +27,10 @@ fn main() {
     println!("cargo:rerun-if-changed={}", vendor.display());
 }
 
-/// Copies the vendored sources into `OUT_DIR/open1722` and applies upstream
+/// Copies the vendored sources into `OUT_DIR/open1722`, applies upstream
 /// fixes that are safe in normal use (single header per TU) but trip bindgen
-/// when every header is pulled into one translation unit.
+/// when every header is pulled into one translation unit, and stages the
+/// `SharedExports.c` companion export unit.
 ///
 /// TODO: upstream these identifier-collision fixes to COVESA/Open1722.
 fn stage_and_patch(vendor: &Path, out_dir: &Path) -> PathBuf {
@@ -48,23 +49,34 @@ fn stage_and_patch(vendor: &Path, out_dir: &Path) -> PathBuf {
         "typedef struct Avtp_Crf {",
     );
 
-    // SensorBrief.h reuses `AVTP_SENSOR_HEADER_LEN` and `AVTP_SENSOR_FIELD_MAX`
-    // from Sensor.h with conflicting values. Rename to the BRIEF variants in
-    // both header and matching .c. The .c only references the header-length
-    // macro (not the field-max), so apply the two replacements separately.
-    patch_all(
-        &staged.join("include/avtp/acf/SensorBrief.h"),
-        &[
-            ("AVTP_SENSOR_HEADER_LEN", "AVTP_SENSOR_BRIEF_HEADER_LEN"),
-            ("AVTP_SENSOR_FIELD_MAX", "AVTP_SENSOR_BRIEF_FIELD_MAX"),
-        ],
-    );
-    patch_all(
-        &staged.join("src/avtp/acf/SensorBrief.c"),
-        &[("AVTP_SENSOR_HEADER_LEN", "AVTP_SENSOR_BRIEF_HEADER_LEN")],
-    );
+    stage_shared_exports(&staged);
 
     staged
+}
+
+/// Upstream's `src/avtp/export/InlineExports.c` forces external definitions
+/// of every format-header accessor, but keeps the shared dependency headers
+/// (Byteorder, AcfCommon) in static-inline mode, so their functions get no
+/// exported symbols. Stage a companion export unit that covers them, so
+/// every function the bindings declare also resolves at link time.
+///
+/// The macro must be defined empty before any Open1722 header is included:
+/// `Inline.h` only applies its `static inline` default when `OPEN1722_INLINE`
+/// is undefined at that point.
+fn stage_shared_exports(staged: &Path) {
+    fs::write(
+        staged.join("src/avtp/export/SharedExports.c"),
+        concat!(
+            "#include <string.h>\n",
+            "\n",
+            "#undef OPEN1722_INLINE\n",
+            "#define OPEN1722_INLINE\n",
+            "\n",
+            "#include \"avtp/Byteorder.h\"\n",
+            "#include \"avtp/acf/AcfCommon.h\"\n",
+        ),
+    )
+    .expect("write SharedExports.c");
 }
 
 fn copy_tree(src: &Path, dst: &Path) {
@@ -112,23 +124,20 @@ fn generate_bindings(include: &Path, out_dir: &Path) {
     let headers = collect_files(&include.join("avtp"), "h");
 
     // The upstream headers define all getters/setters as `static inline`
-    // functions whose bodies reference field-descriptor tables and helper
-    // macros (`GET_*_FIELD`, `Avtp_GetField`, ...) that bindgen cannot
-    // translate directly. `wrap_static_fns` makes bindgen emit a C source
-    // file of non-`static` trampolines that call the inline functions; we
-    // compile and link that file below so the Rust side sees ordinary
-    // `extern "C"` symbols.
-    let wrapper_c = out_dir.join("open1722_static_fns.c");
-
+    // through the OPEN1722_INLINE macro (see upstream docs/INLINE.md).
+    // Defining the macro empty on the preprocessor command line turns every
+    // accessor into a plain external declaration, so bindgen emits direct
+    // `extern "C"` bindings for it. The matching symbols are exported by
+    // upstream's InlineExports.c (format headers) and by the staged
+    // SharedExports.c (shared dependency headers).
     let mut builder = bindgen::Builder::default()
         .clang_arg(format!("-I{}", include.display()))
+        .clang_arg("-DOPEN1722_INLINE=")
         .use_core()
         .derive_default(true)
         .derive_copy(true)
         .derive_debug(true)
         .layout_tests(true)
-        .wrap_static_fns(true)
-        .wrap_static_fns_path(&wrapper_c)
         .allowlist_type("Avtp_.*")
         .allowlist_function("Avtp_.*")
         .allowlist_var("AVTP_.*")
@@ -148,15 +157,6 @@ fn generate_bindings(include: &Path, out_dir: &Path) {
     let bindings = builder.generate().expect("bindgen failed");
     let out = out_dir.join("bindings.rs");
     bindings.write_to_file(out).expect("write bindings.rs");
-
-    // Compile the trampoline file alongside the vendored sources so the
-    // inline functions are reachable from Rust as ordinary extern symbols.
-    cc::Build::new()
-        .file(&wrapper_c)
-        .include(include)
-        .std("c99")
-        .warnings(false)
-        .compile("open1722_static_fns");
 }
 
 fn collect_files(root: &Path, ext: &str) -> Vec<PathBuf> {

@@ -9,7 +9,7 @@ implementation of the IEEE 1722 (AVTP) standard for streaming audio,
 video, clock reference, and automotive bus traffic (CAN, LIN, FlexRay,
 MOST, GPC, sensor data) over a network.
 
-Pinned to upstream tag `v0.9.2` (August 2026).
+Pinned to upstream tag `v0.9.3` (August 2026).
 
 ## Format wrapper pattern
 
