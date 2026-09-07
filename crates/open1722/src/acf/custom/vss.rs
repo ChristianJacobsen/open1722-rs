@@ -202,6 +202,15 @@ impl<B: AsRef<[u8]>> Vss<B> {
             }
         }
     }
+
+    /// Combined wire size of the path and data sections as currently
+    /// written in the frame.
+    fn payload_wire_length(&self) -> Result<usize> {
+        let path_len = self.path_wire_length()?;
+        let off = HEADER_LEN + path_len;
+        let data = decode_data(self.as_bytes(), off, self.datatype()?)?;
+        Ok(path_len + data_wire_length(&data)?)
+    }
 }
 
 impl<B: AsRef<[u8]> + AsMut<[u8]>> Vss<B> {
@@ -279,10 +288,22 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Vss<B> {
     }
 
     /// Sets the ACF length and pad fields for a VSS payload of the given
-    /// size (path + data bytes), zeroing the pad bytes. The payload bytes
-    /// themselves must already be in place.
+    /// size (path + data bytes), zeroing the pad bytes.
+    ///
+    /// `payload_length` must equal the combined size of the path and
+    /// data sections written with [`Self::set_path`] and
+    /// [`Self::set_data`]; any other value is rejected. To build frames
+    /// with a deliberately inconsistent length field, write the raw
+    /// quadlet count with [`Self::set_acf_msg_length`].
     pub fn set_payload_length(&mut self, payload_length: u16) -> Result<()> {
         check_payload_room(self.as_bytes().len(), payload_length as usize, HEADER_LEN)?;
+        let actual = self.payload_wire_length()?;
+        if payload_length as usize != actual {
+            return Err(Error::PayloadLengthMismatch {
+                declared: payload_length,
+                actual,
+            });
+        }
         // SAFETY: buffer length validated >= HEADER_LEN + payload padded
         // to a quadlet by `check_payload_room`, which covers every byte
         // the C helper touches: the header-field writes and the
@@ -671,15 +692,48 @@ mod tests {
         assert_eq!(vss.acf_msg_length(), 16 / 4);
         assert_eq!(vss.message_length(), 16);
 
-        // Same 4 payload bytes, but declared as 5: the extra byte is
-        // covered by 3 bytes of padding.
+        // Path (2 + 2) + scalar (1) = 5 payload bytes: 12 + 5 pads to 20.
         let mut backing2 = [0u8; MAX_PDU];
         let mut vss2 = Vss::initialized(&mut backing2[..]).unwrap();
-        vss2.set_path(Path::Interop(b"X")).unwrap();
+        vss2.set_path(Path::Interop(b"XY")).unwrap();
         vss2.set_data(Data::U8(0xAA)).unwrap();
         vss2.set_payload_length(5).unwrap();
         assert_eq!(vss2.pad(), 3);
         assert_eq!(vss2.acf_msg_length(), 20 / 4);
+        assert_eq!(vss2.message_length(), 20);
+    }
+
+    /// The declared length must match the path and data sections
+    /// actually written; a lying length is rejected instead of silently
+    /// producing a frame whose payload is buffer residue.
+    #[test]
+    fn set_payload_length_rejects_mismatched_length() {
+        let mut backing = [0u8; MAX_PDU];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        vss.set_path(Path::Interop(b"X")).unwrap();
+        vss.set_data(Data::U8(0xAA)).unwrap();
+        assert!(matches!(
+            vss.set_payload_length(5),
+            Err(Error::PayloadLengthMismatch {
+                declared: 5,
+                actual: 4
+            })
+        ));
+    }
+
+    /// Forgetting `set_data` is caught: the intended length (path +
+    /// data) disagrees with what the frame actually holds.
+    #[test]
+    fn set_payload_length_catches_missing_data() {
+        let mut backing = [0u8; MAX_PDU];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        vss.set_path(Path::Interop(b"Vehicle.Speed")).unwrap();
+        // The user computes path (2 + 13) + F32 (4) = 19 but never wrote
+        // the data section.
+        assert!(matches!(
+            vss.set_payload_length(19),
+            Err(Error::PayloadLengthMismatch { .. })
+        ));
     }
 
     /// The pad bytes at HEADER_LEN + payload_length must stay within the
@@ -687,22 +741,27 @@ mod tests {
     /// header + payload.
     #[test]
     fn set_payload_length_requires_room_for_pad() {
-        // 12-byte header + 1-byte payload = 13 bytes held, but the
-        // quadlet-aligned total is 16: the 3 pad bytes do not fit.
-        let mut backing = [0u8; HEADER_LEN + 1];
+        // Path (2 + 2) + scalar (1) = 5 payload bytes; the buffer holds
+        // header + payload (17 bytes) but the quadlet-aligned total is 20:
+        // the 3 pad bytes do not fit.
+        let mut backing = [0u8; HEADER_LEN + 5];
         let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        vss.set_path(Path::Interop(b"XY")).unwrap();
+        vss.set_data(Data::U8(0xAA)).unwrap();
         assert!(matches!(
-            vss.set_payload_length(1),
+            vss.set_payload_length(5),
             Err(Error::BufferTooSmall { .. })
         ));
 
         // With room for the pad bytes the call succeeds and stays in
         // bounds.
-        let mut backing = [0u8; HEADER_LEN + 4];
+        let mut backing = [0u8; HEADER_LEN + 8];
         let mut vss = Vss::initialized(&mut backing[..]).unwrap();
-        vss.set_payload_length(1).unwrap();
+        vss.set_path(Path::Interop(b"XY")).unwrap();
+        vss.set_data(Data::U8(0xAA)).unwrap();
+        vss.set_payload_length(5).unwrap();
         assert_eq!(vss.pad(), 3);
-        assert_eq!(vss.message_length(), 16);
+        assert_eq!(vss.message_length(), 20);
     }
 
     #[test]

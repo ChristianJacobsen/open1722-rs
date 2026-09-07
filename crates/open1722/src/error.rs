@@ -14,6 +14,11 @@ pub enum Error {
         value: u64,
         bits: u8,
     },
+
+    #[error(
+        "declared payload length {declared}, but the frame holds {actual} bytes of path and data"
+    )]
+    PayloadLengthMismatch { declared: u16, actual: usize },
 }
 
 pub type Result<T> = core::result::Result<T, Error>;
