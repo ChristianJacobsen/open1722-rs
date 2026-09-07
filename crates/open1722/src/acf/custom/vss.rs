@@ -48,7 +48,8 @@ impl Path<'_> {
 /// the payload bytes that follow the 2-byte big-endian length prefix on
 /// the wire. For multi-byte array variants (`U16Array` through
 /// `F64Array`) the bytes are stored big-endian per element; decode with
-/// `from_be_bytes` over `chunks_exact(N)` where `N` is the element size.
+/// `from_be_bytes` over `as_chunks::<N>()` where `N` is the element
+/// size.
 ///
 /// `StringArray` carries a concatenation of sub-frames; each sub-frame is
 /// itself a 2-byte big-endian length prefix followed by that many bytes.
@@ -630,7 +631,7 @@ mod tests {
 
     /// Ported from upstream unit/test-vss.c::vss_data_uint16_array. The
     /// payload bytes are big-endian per element; the caller decodes via
-    /// `from_be_bytes` over `chunks_exact(2)`.
+    /// `from_be_bytes` over `as_chunks::<2>()`.
     #[test]
     fn multi_byte_array_round_trip() {
         let mut backing = [0u8; MAX_PDU];
@@ -649,8 +650,10 @@ mod tests {
             panic!("expected U16Array");
         };
         let decoded: alloc::vec::Vec<u16> = bytes
-            .chunks_exact(2)
-            .map(|c| u16::from_be_bytes([c[0], c[1]]))
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .map(|c| u16::from_be_bytes(*c))
             .collect();
         assert_eq!(decoded, values);
     }
