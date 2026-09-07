@@ -4,7 +4,7 @@
 use open1722_sys as sys;
 
 use super::{AddrMode, Datatype, OpCode};
-use crate::pdu::pdu_struct;
+use crate::pdu::{check_payload_room, pdu_struct};
 use crate::{Error, Result};
 
 pdu_struct! {
@@ -114,9 +114,17 @@ impl Data<'_> {
 
 impl<B: AsRef<[u8]>> Vss<B> {
     /// Length of the ACF message in quadlets (header + payload + pad).
-    pub fn acf_msg_length(&self) -> u8 {
+    pub fn acf_msg_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Vss_GetAcfMsgLength(self.raw()) }
+        unsafe { sys::Avtp_AcfCommon_GetAcfMsgLength(self.raw() as *const sys::Avtp_AcfCommon_t) }
+    }
+
+    /// Total message length in bytes (header + payload + pad).
+    pub fn message_length(&self) -> u16 {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe {
+            sys::Avtp_AcfCommon_GetAcfMsgLengthInBytes(self.raw() as *const sys::Avtp_AcfCommon_t)
+        }
     }
 
     pub fn pad(&self) -> u8 {
@@ -126,7 +134,7 @@ impl<B: AsRef<[u8]>> Vss<B> {
 
     pub fn message_timestamp(&self) -> u64 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Vss_GetMsgTimestamp(self.raw()) }
+        unsafe { sys::Avtp_Vss_GetMessageTimestamp(self.raw()) }
     }
 
     pub fn addr_mode(&self) -> Result<AddrMode> {
@@ -150,7 +158,7 @@ impl<B: AsRef<[u8]>> Vss<B> {
     /// `mtv`: `message_timestamp` carries a meaningful value.
     pub fn is_message_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Vss_GetMtv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Vss_IsMtv(self.raw()) }
     }
 
     /// Reads the VSS path. Dispatches on the addressing mode header field;
@@ -199,7 +207,7 @@ impl<B: AsRef<[u8]>> Vss<B> {
 impl<B: AsRef<[u8]> + AsMut<[u8]>> Vss<B> {
     pub fn set_message_timestamp(&mut self, value: u64) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Vss_SetMsgTimestamp(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Vss_SetMessageTimestamp(self.raw_mut(), value) };
     }
 
     pub fn set_addr_mode(&mut self, value: AddrMode) {
@@ -219,13 +227,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Vss<B> {
 
     pub fn set_message_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Vss_EnableMtv(self.raw_mut());
-            } else {
-                sys::Avtp_Vss_DisableMtv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Vss_SetMtv(self.raw_mut(), value) };
     }
 
     /// Writes the VSS path payload and updates the `addr_mode` field to
@@ -276,13 +278,17 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Vss<B> {
         Ok(())
     }
 
-    /// Sets the ACF length and pad fields for a total VSS frame length
-    /// (header + payload). The payload bytes must already be in place.
-    pub fn pad_to(&mut self, vss_length: u16) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction;
-        // caller is responsible for ensuring `vss_length` matches the
-        // bytes actually written via `set_path` and `set_data`.
-        unsafe { sys::Avtp_Vss_Pad(self.raw_mut(), vss_length) };
+    /// Sets the ACF length and pad fields for a VSS payload of the given
+    /// size (path + data bytes), zeroing the pad bytes. The payload bytes
+    /// themselves must already be in place.
+    pub fn set_payload_length(&mut self, payload_length: u16) -> Result<()> {
+        check_payload_room(self.as_bytes().len(), payload_length as usize, HEADER_LEN)?;
+        // SAFETY: buffer length validated >= HEADER_LEN + payload padded
+        // to a quadlet by `check_payload_room`, which covers every byte
+        // the C helper touches: the header-field writes and the
+        // pad-zeroing memset at HEADER_LEN + payload_length.
+        unsafe { sys::Avtp_Vss_SetPayloadLength(self.raw_mut(), payload_length) };
+        Ok(())
     }
 }
 
@@ -653,25 +659,50 @@ mod tests {
     }
 
     #[test]
-    fn pad_to_round_trip() {
+    fn set_payload_length_round_trip() {
         let mut backing = [0u8; MAX_PDU];
         let mut vss = Vss::initialized(&mut backing[..]).unwrap();
         vss.set_path(Path::Interop(b"X")).unwrap();
-        // header (12) + path (2 + 1) + scalar (1) = 16, already aligned.
+        // Payload is path (2 + 1) + scalar (1) = 4 bytes; header (12) +
+        // payload = 16, already aligned.
         vss.set_data(Data::U8(0xAA)).unwrap();
-        vss.pad_to(16);
+        vss.set_payload_length(4).unwrap();
         assert_eq!(vss.pad(), 0);
         assert_eq!(vss.acf_msg_length(), 16 / 4);
+        assert_eq!(vss.message_length(), 16);
 
-        // header (12) + path (2 + 1) + scalar (1) = 16; ask for 13 to
-        // force 3 bytes of padding.
+        // Same 4 payload bytes, but declared as 5: the extra byte is
+        // covered by 3 bytes of padding.
         let mut backing2 = [0u8; MAX_PDU];
         let mut vss2 = Vss::initialized(&mut backing2[..]).unwrap();
         vss2.set_path(Path::Interop(b"X")).unwrap();
         vss2.set_data(Data::U8(0xAA)).unwrap();
-        vss2.pad_to(13);
+        vss2.set_payload_length(5).unwrap();
         assert_eq!(vss2.pad(), 3);
-        assert_eq!(vss2.acf_msg_length(), 16 / 4);
+        assert_eq!(vss2.acf_msg_length(), 20 / 4);
+    }
+
+    /// The pad bytes at HEADER_LEN + payload_length must stay within the
+    /// buffer, so the room check has to cover the padded extent, not just
+    /// header + payload.
+    #[test]
+    fn set_payload_length_requires_room_for_pad() {
+        // 12-byte header + 1-byte payload = 13 bytes held, but the
+        // quadlet-aligned total is 16: the 3 pad bytes do not fit.
+        let mut backing = [0u8; HEADER_LEN + 1];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        assert!(matches!(
+            vss.set_payload_length(1),
+            Err(Error::BufferTooSmall { .. })
+        ));
+
+        // With room for the pad bytes the call succeeds and stays in
+        // bounds.
+        let mut backing = [0u8; HEADER_LEN + 4];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        vss.set_payload_length(1).unwrap();
+        assert_eq!(vss.pad(), 3);
+        assert_eq!(vss.message_length(), 16);
     }
 
     #[test]

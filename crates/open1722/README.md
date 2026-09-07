@@ -9,7 +9,7 @@ implementation of the IEEE 1722 (AVTP) standard for streaming audio,
 video, clock reference, and automotive bus traffic (CAN, LIN, FlexRay,
 MOST, GPC, sensor data) over a network.
 
-Pinned to upstream tag `v0.9.3` (August 2026).
+Pinned to upstream tag `v0.9.4` (September 2026).
 
 ## Format wrapper pattern
 
@@ -99,19 +99,17 @@ tscf.set_timestamp_valid(true);
 tscf.set_stream_data_length(36); // CAN (20) + LIN (16)
 
 // Layer 3: CAN ACF message inside the TSCF payload region.
+// create_acf_message resets the header, so set the bus id after it.
 let mut can = Can::initialized(can_buf).unwrap();
-can.set_bus_id(4);
 can.create_acf_message(0x100, &[0x11, 0x22], Variant::Classic).unwrap();
+can.set_bus_id(4);
 
-// Layer 4: LIN ACF message in the remaining TSCF payload region. Lin
-// does not currently expose a high-level `set_payload`; write the
-// payload bytes directly via the buffer accessor.
+// Layer 4: LIN ACF message in the remaining TSCF payload region.
 let mut lin = Lin::initialized(lin_buf).unwrap();
 lin.set_bus_id(1);
 lin.set_identifier(0x10);
-let lin_header_len = open1722::acf::lin::HEADER_LEN;
-lin.as_bytes_mut()[lin_header_len..lin_header_len + 3]
-    .copy_from_slice(&[0x11, 0x22, 0x33]);
+lin.set_payload(&[0x11, 0x22, 0x33]).unwrap();
+lin.set_payload_length(3).unwrap();
 
 // `buf` now holds a complete frame ready to send via a socket.
 ```

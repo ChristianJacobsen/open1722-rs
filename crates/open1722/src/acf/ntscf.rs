@@ -42,7 +42,7 @@ impl<B: AsRef<[u8]>> Ntscf<B> {
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_GetSv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Ntscf_IsSv(self.raw()) }
     }
 
     /// NTSCF data slice, clamped to the buffer in case the declared length
@@ -57,7 +57,7 @@ impl<B: AsRef<[u8]>> Ntscf<B> {
     /// Structural validity check (length field consistent with buffer size).
     pub fn is_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_IsValid(self.raw(), self.0.as_ref().len()) != 0 }
+        unsafe { sys::Avtp_Ntscf_IsValid(self.raw(), self.0.as_ref().len()) }
     }
 }
 
@@ -84,13 +84,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Ntscf<B> {
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Ntscf_EnableSv(self.raw_mut());
-            } else {
-                sys::Avtp_Ntscf_DisableSv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Ntscf_SetSv(self.raw_mut(), value) };
     }
 }
 

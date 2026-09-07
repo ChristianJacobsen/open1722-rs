@@ -48,7 +48,15 @@ impl<B: AsRef<[u8]>> Can<B> {
     /// Length of the ACF message in quadlets (header + payload + pad).
     pub fn acf_msg_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetAcfMsgLength(self.raw()) }
+        unsafe { sys::Avtp_AcfCommon_GetAcfMsgLength(self.raw() as *const sys::Avtp_AcfCommon_t) }
+    }
+
+    /// Total message length in bytes (header + payload + pad).
+    pub fn message_length(&self) -> u16 {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe {
+            sys::Avtp_AcfCommon_GetAcfMsgLengthInBytes(self.raw() as *const sys::Avtp_AcfCommon_t)
+        }
     }
 
     pub fn pad(&self) -> u8 {
@@ -59,39 +67,39 @@ impl<B: AsRef<[u8]>> Can<B> {
     /// `mtv`: `message_timestamp` carries a meaningful value.
     pub fn is_message_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetMtv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Can_IsMtv(self.raw()) }
     }
 
     /// `rtr`: this frame requests data from another node rather than
     /// carrying data itself.
     pub fn is_remote_frame(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetRtr(self.raw()) != 0 }
+        unsafe { sys::Avtp_Can_IsRtr(self.raw()) }
     }
 
     /// `eff`: the frame carries a 29-bit extended identifier rather than
     /// the 11-bit standard identifier.
     pub fn is_extended(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetEff(self.raw()) != 0 }
+        unsafe { sys::Avtp_Can_IsEff(self.raw()) }
     }
 
     /// `brs`: the CAN-FD data phase used a switched (higher) bit rate.
     pub fn is_bit_rate_switched(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetBrs(self.raw()) != 0 }
+        unsafe { sys::Avtp_Can_IsBrs(self.raw()) }
     }
 
     /// `fdf`: the frame uses CAN-FD framing.
     pub fn is_fd_format(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetFdf(self.raw()) != 0 }
+        unsafe { sys::Avtp_Can_IsFdf(self.raw()) }
     }
 
     /// `esi`: the transmitter is in the error-passive state.
     pub fn is_error_state_indicator(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetEsi(self.raw()) != 0 }
+        unsafe { sys::Avtp_Can_IsEsi(self.raw()) }
     }
 
     /// CAN frame payload, excluding header and trailing pad bytes.
@@ -102,13 +110,13 @@ impl<B: AsRef<[u8]>> Can<B> {
 
     pub fn payload_length(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_GetCanPayloadLength(self.raw()) }
+        unsafe { sys::Avtp_Can_GetPayloadLength(self.raw()) }
     }
 
     /// Structural validity check (length field consistent with buffer size).
     pub fn is_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_IsValid(self.raw(), self.0.as_ref().len()) != 0 }
+        unsafe { sys::Avtp_Can_IsValid(self.raw(), self.0.as_ref().len()) }
     }
 }
 
@@ -124,12 +132,15 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
     }
 
     /// Sets the ACF message length field directly (in quadlets). Normally
-    /// not needed: [`Self::create_acf_message`] and [`Self::finalize`]
-    /// compute this from the payload size. Exposed for tests and for
-    /// callers that pre-allocate the wire layout by hand.
+    /// not needed: [`Self::create_acf_message`] and
+    /// [`Self::set_payload_length`] compute this from the payload size.
+    /// Exposed for tests and for callers that pre-allocate the wire layout
+    /// by hand.
     pub fn set_acf_msg_length(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Can_SetAcfMsgLength(self.raw_mut(), value) };
+        unsafe {
+            sys::Avtp_AcfCommon_SetAcfMsgLength(self.raw_mut() as *mut sys::Avtp_AcfCommon_t, value)
+        };
     }
 
     pub fn set_message_timestamp(&mut self, value: u64) {
@@ -139,73 +150,40 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
 
     pub fn set_message_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Can_EnableMtv(self.raw_mut());
-            } else {
-                sys::Avtp_Can_DisableMtv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Can_SetMtv(self.raw_mut(), value) };
     }
 
     pub fn set_remote_frame(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Can_EnableRtr(self.raw_mut());
-            } else {
-                sys::Avtp_Can_DisableRtr(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Can_SetRtr(self.raw_mut(), value) };
     }
 
     pub fn set_extended(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Can_EnableEff(self.raw_mut());
-            } else {
-                sys::Avtp_Can_DisableEff(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Can_SetEff(self.raw_mut(), value) };
     }
 
     pub fn set_bit_rate_switched(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Can_EnableBrs(self.raw_mut());
-            } else {
-                sys::Avtp_Can_DisableBrs(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Can_SetBrs(self.raw_mut(), value) };
     }
 
     pub fn set_fd_format(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Can_EnableFdf(self.raw_mut());
-            } else {
-                sys::Avtp_Can_DisableFdf(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Can_SetFdf(self.raw_mut(), value) };
     }
 
     pub fn set_error_state_indicator(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Can_EnableEsi(self.raw_mut());
-            } else {
-                sys::Avtp_Can_DisableEsi(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Can_SetEsi(self.raw_mut(), value) };
     }
 
     /// Copies `payload` into the message, sets the identifier, marks the
     /// FD bit when needed, and finalizes the length/pad fields. Equivalent
     /// to the C library's high-level talker helper.
+    ///
+    /// Any header fields set before this call (bus id, flags, timestamp)
+    /// are reset; set them after building the message.
     pub fn create_acf_message(
         &mut self,
         frame_id: u32,
@@ -230,7 +208,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
 
     /// Lower-level alternative to [`Self::create_acf_message`]: writes the
     /// payload bytes only, without touching identifier, flags, or length.
-    /// Pair with [`Self::finalize`].
+    /// Pair with [`Self::set_payload_length`].
     pub fn set_payload(&mut self, payload: &[u8]) -> Result<()> {
         check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
         // SAFETY: buffer length validated by `check_payload_room`. The C
@@ -245,12 +223,13 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         Ok(())
     }
 
-    /// Sets the ACF message length and pad fields for a payload of the given
-    /// size. The payload bytes themselves must already be in place.
-    pub fn finalize(&mut self, payload_length: u16) -> Result<()> {
+    /// Sets the ACF message length and pad fields for a payload of the
+    /// given size, zeroing the pad bytes. The payload bytes themselves
+    /// must already be in place.
+    pub fn set_payload_length(&mut self, payload_length: u16) -> Result<()> {
         check_payload_room(self.0.as_ref().len(), payload_length as usize, HEADER_LEN)?;
         // SAFETY: buffer length validated by `check_payload_room`.
-        unsafe { sys::Avtp_Can_Finalize(self.raw_mut(), payload_length) };
+        unsafe { sys::Avtp_Can_SetPayloadLength(self.raw_mut(), payload_length) };
         Ok(())
     }
 }
@@ -264,9 +243,10 @@ mod tests {
     fn classic_frame_round_trip() {
         let mut backing = [0u8; HEADER_LEN + 8];
         let mut can = Can::initialized(&mut backing[..]).unwrap();
-        can.set_bus_id(4);
         can.create_acf_message(0x1AB, &[0x11, 0x22], Variant::Classic)
             .unwrap();
+        // create_acf_message resets the header, so set the bus id after it.
+        can.set_bus_id(4);
 
         assert_eq!(can.bus_id(), 4);
         assert_eq!(can.identifier(), 0x1AB);
@@ -381,6 +361,30 @@ mod tests {
         let mut can = Can::initialized(&mut backing[..]).unwrap();
         can.set_acf_msg_length(6);
         let can = Can::new(&backing[..25]).unwrap();
+        assert!(can.is_valid());
+
+        // Classic CAN frames cannot carry more than 8 payload bytes.
+        let mut backing = [0u8; 64];
+        let mut can = Can::initialized(&mut backing[..]).unwrap();
+        can.set_fd_format(false);
+        can.set_acf_msg_length(4 + 3); // 12-byte payload declared
+        assert!(!can.is_valid());
+    }
+
+    /// Low-level talker path: payload bytes first, then finalize the
+    /// length/pad fields.
+    #[test]
+    fn set_payload_then_set_payload_length() {
+        let mut backing = [0u8; HEADER_LEN + 8];
+        let mut can = Can::initialized(&mut backing[..]).unwrap();
+        can.set_identifier(0x456);
+        can.set_payload(&[0xDE, 0xAD, 0xBE, 0xEF, 0x01]).unwrap();
+        can.set_payload_length(5).unwrap();
+
+        assert_eq!(can.payload(), &[0xDE, 0xAD, 0xBE, 0xEF, 0x01]);
+        assert_eq!(can.pad(), 3);
+        assert_eq!(can.acf_msg_length(), (HEADER_LEN as u16 + 8) / 4);
+        assert_eq!(can.message_length(), HEADER_LEN as u16 + 8);
         assert!(can.is_valid());
     }
 }

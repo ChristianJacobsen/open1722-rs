@@ -58,7 +58,7 @@ fn tscf_setters_match_c_lib() {
         sys::Avtp_Tscf_SetSequenceNum(pdu, 42);
         sys::Avtp_Tscf_SetStreamId(pdu, 0xAABB_CCDD_EEFF_0011);
         sys::Avtp_Tscf_SetAvtpTimestamp(pdu, 0xDEAD_BEEF);
-        sys::Avtp_Tscf_EnableTv(pdu);
+        sys::Avtp_Tscf_SetTv(pdu, true);
     }
 
     assert_eq!(rust, c);
@@ -70,15 +70,14 @@ fn can_create_acf_message_matches_c_lib() {
 
     let mut rust = [0u8; PDU];
     let mut can = Can::initialized(&mut rust[..]).unwrap();
-    can.set_bus_id(7);
     can.create_acf_message(0x1AB, &payload, Variant::Classic)
         .unwrap();
+    // create_acf_message resets the header, so set the bus id after it.
+    can.set_bus_id(7);
 
     let mut c = [0u8; PDU];
     unsafe {
         let pdu = c.as_mut_ptr() as *mut sys::Avtp_Can_t;
-        sys::Avtp_Can_Init(pdu);
-        sys::Avtp_Can_SetCanBusId(pdu, 7);
         sys::Avtp_Can_CreateAcfMessage(
             pdu,
             0x1AB,
@@ -86,6 +85,7 @@ fn can_create_acf_message_matches_c_lib() {
             payload.len() as u16,
             sys::Avtp_CanVariant_t::AVTP_CAN_CLASSIC,
         );
+        sys::Avtp_Can_SetCanBusId(pdu, 7);
     }
 
     assert_eq!(rust, c);

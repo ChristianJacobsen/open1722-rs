@@ -4,7 +4,7 @@
 use core::mem::MaybeUninit;
 use open1722_sys::{
     AVTP_CAN_HEADER_LEN, AVTP_TSCF_HEADER_LEN, Avtp_Can_GetCanBusId, Avtp_Can_GetCanIdentifier,
-    Avtp_Can_GetMtv, Avtp_Can_Init, Avtp_Can_SetCanBusId, Avtp_Can_SetCanIdentifier, Avtp_Can_t,
+    Avtp_Can_Init, Avtp_Can_IsMtv, Avtp_Can_SetCanBusId, Avtp_Can_SetCanIdentifier, Avtp_Can_t,
     Avtp_Tscf_GetSequenceNum, Avtp_Tscf_GetStreamId, Avtp_Tscf_Init, Avtp_Tscf_SetSequenceNum,
     Avtp_Tscf_SetStreamId, Avtp_Tscf_t,
 };
@@ -38,7 +38,7 @@ fn can_roundtrip() {
         Avtp_Can_SetCanIdentifier(pdu, 0x1AB);
         assert_eq!(Avtp_Can_GetCanBusId(pdu), 7);
         assert_eq!(Avtp_Can_GetCanIdentifier(pdu), 0x1AB);
-        // MTV defaults to 0 after Init.
-        assert_eq!(Avtp_Can_GetMtv(pdu), 0);
+        // MTV defaults to false after Init.
+        assert!(!Avtp_Can_IsMtv(pdu));
     }
 }

@@ -4,7 +4,9 @@
 
 use open1722_sys as sys;
 
-use crate::pdu::pdu_struct;
+use crate::Result;
+use crate::acf::can::Variant;
+use crate::pdu::{check_payload_room, pdu_struct};
 
 pdu_struct! {
     pub struct CanV2 {
@@ -74,19 +76,21 @@ impl<B: AsRef<[u8]>> CanV2<B> {
     /// Length of the ACF message in quadlets (header + payload + pad).
     pub fn acf_msg_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_CanV2_GetLen(self.raw()) / sys::AVTP_QUADLET_SIZE as u16 }
+        unsafe { sys::Avtp_AcfCommon_GetAcfMsgLength(self.raw() as *const sys::Avtp_AcfCommon_t) }
     }
 
     /// Payload length in bytes (excludes header and trailing pad).
-    pub fn payload_length(&self) -> u16 {
+    pub fn payload_length(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_CanV2_GetPayloadLen(self.raw()) }
+        unsafe { sys::Avtp_CanV2_GetPayloadLength(self.raw()) }
     }
 
     /// Total message length in bytes (header + payload + pad).
     pub fn message_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_CanV2_GetLen(self.raw()) }
+        unsafe {
+            sys::Avtp_AcfCommon_GetAcfMsgLengthInBytes(self.raw() as *const sys::Avtp_AcfCommon_t)
+        }
     }
 
     /// Payload slice, clamped to the bytes actually present in the buffer.
@@ -95,6 +99,12 @@ impl<B: AsRef<[u8]>> CanV2<B> {
         let buf = self.0.as_ref();
         let available = buf.len().saturating_sub(HEADER_LEN);
         &buf[HEADER_LEN..HEADER_LEN + len.min(available)]
+    }
+
+    /// Structural validity check (length field consistent with buffer size).
+    pub fn is_valid(&self) -> bool {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe { sys::Avtp_CanV2_IsValid(self.raw(), self.0.as_ref().len()) }
     }
 }
 
@@ -144,12 +154,65 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CanV2<B> {
         unsafe { sys::Avtp_CanV2_SetCanIdentifier(self.raw_mut(), value) };
     }
 
-    /// Sets `acf_msg_length` and `pad` for a payload of `payload_len`
-    /// bytes. The payload bytes themselves must already be in place.
-    pub fn set_payload_length(&mut self, payload_len: u16) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction;
-        // callers are responsible for having written `payload_len` bytes.
-        unsafe { sys::Avtp_CanV2_SetPayloadLen(self.raw_mut(), payload_len) };
+    /// Sets the ACF message length and pad fields for a payload of the
+    /// given size, zeroing the pad bytes. The payload bytes themselves
+    /// must already be in place.
+    pub fn set_payload_length(&mut self, payload_length: u16) -> Result<()> {
+        check_payload_room(self.0.as_ref().len(), payload_length as usize, HEADER_LEN)?;
+        // SAFETY: buffer length validated >= HEADER_LEN + padded payload by
+        // `check_payload_room`.
+        unsafe { sys::Avtp_CanV2_SetPayloadLength(self.raw_mut(), payload_length) };
+        Ok(())
+    }
+    /// Sets the ACF message length field directly (in quadlets). Normally
+    /// not needed: [`Self::create_acf_message`] and
+    /// [`Self::set_payload_length`] compute this from the payload size.
+    pub fn set_acf_msg_length(&mut self, value: u16) {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe {
+            sys::Avtp_AcfCommon_SetAcfMsgLength(self.raw_mut() as *mut sys::Avtp_AcfCommon_t, value)
+        };
+    }
+
+    /// Copies `payload` into the message, sets the identifier, marks the
+    /// FD bit when needed, and finalizes the length/pad fields. Any
+    /// header fields set before this call are reset; set additional
+    /// fields after building the message.
+    pub fn create_acf_message(
+        &mut self,
+        frame_id: u32,
+        payload: &[u8],
+        variant: Variant,
+    ) -> Result<()> {
+        check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
+        // SAFETY: buffer length validated >= HEADER_LEN + padded payload by
+        // `check_payload_room`. The C function reads `payload` despite the
+        // non-const pointer in its signature.
+        unsafe {
+            sys::Avtp_CanV2_CreateAcfMessage(
+                self.raw_mut(),
+                frame_id,
+                payload.as_ptr() as *mut u8,
+                payload.len() as u16,
+                variant.as_sys(),
+            );
+        }
+        Ok(())
+    }
+
+    /// Writes the payload bytes only, without touching other header
+    /// fields or the length. Pair with [`Self::set_payload_length`].
+    pub fn set_payload(&mut self, payload: &[u8]) -> Result<()> {
+        check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
+        // SAFETY: buffer length validated by `check_payload_room`.
+        unsafe {
+            sys::Avtp_CanV2_SetPayload(
+                self.raw_mut(),
+                payload.as_ptr() as *mut u8,
+                payload.len() as u16,
+            );
+        }
+        Ok(())
     }
 }
 
@@ -164,7 +227,7 @@ mod tests {
         let _ = CanV2::initialized(&mut buf[..]).unwrap();
         let expected = AcfMsgType::CanV2.as_u8() << 1;
         assert_eq!(buf[0] & 0xFE, expected);
-        assert_eq!(CanV2::new(&buf[..]).unwrap().acf_msg_length(), 4);
+        assert_eq!(CanV2::new(&buf[..]).unwrap().acf_msg_length(), 0);
     }
 
     #[test]
@@ -209,10 +272,38 @@ mod tests {
         let mut can = CanV2::initialized(&mut backing[..]).unwrap();
         // 7-byte payload needs 1 byte of padding: total = 16 + 7 + 1 = 24
         // bytes = 6 quadlets.
-        can.set_payload_length(7);
+        can.set_payload_length(7).unwrap();
         assert_eq!(can.payload_length(), 7);
         assert_eq!(can.pad(), 1);
         assert_eq!(can.acf_msg_length(), 6);
         assert_eq!(can.message_length(), 24);
+    }
+
+    #[test]
+    fn create_acf_message_round_trip() {
+        let mut backing = [0u8; HEADER_LEN + 8];
+        let mut can = CanV2::initialized(&mut backing[..]).unwrap();
+        can.create_acf_message(0x1234_5678, &[0xAA; 8], Variant::Fd)
+            .unwrap();
+
+        assert!(can.is_extended());
+        assert!(can.is_fd_format());
+        assert_eq!(can.identifier(), 0x1234_5678);
+        assert_eq!(can.payload(), &[0xAA; 8]);
+        assert!(can.is_valid());
+    }
+
+    #[test]
+    fn is_valid_corruption_cases() {
+        // An Init-only PDU has AcfMsgLength == 0 -- i.e. it declares a
+        // frame shorter than its own header, so IsValid rejects it.
+        let mut backing = [0u8; 64];
+        let can = CanV2::initialized(&mut backing[..]).unwrap();
+        assert!(!can.is_valid());
+
+        // Zeroed buffer: ACF type byte is wrong (not CAN_V2).
+        let zeroed = [0u8; 64];
+        let can = CanV2::new(&zeroed[..]).unwrap();
+        assert!(!can.is_valid());
     }
 }

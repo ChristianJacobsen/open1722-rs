@@ -101,13 +101,12 @@
 //! // Variable-length data. `set_data` also writes the datatype field.
 //! vss.set_data(Data::F32(42.5)).unwrap();
 //!
-//! // Tell the wrapper how many bytes are live (header + path + data) so
-//! // it can compute the ACF message length and trailing pad. VSS frames
-//! // must be quadlet-aligned on the wire.
+//! // Finalize the length and trailing pad from the payload size (path +
+//! // data bytes). VSS frames must be quadlet-aligned on the wire.
 //! //
-//! //   header (12) + path length prefix (2) + "Vehicle.Speed" (13) +
-//! //   F32 (4) = 31, padded to 32.
-//! vss.pad_to(31);
+//! //   payload = path length prefix (2) + "Vehicle.Speed" (13) +
+//! //   F32 (4) = 19; header (12) + 19 = 31, padded to 32.
+//! vss.set_payload_length(19).unwrap();
 //!
 //! // Read it back the same way a listener would.
 //! let frame = Vss::new(vss.as_bytes()).unwrap();
