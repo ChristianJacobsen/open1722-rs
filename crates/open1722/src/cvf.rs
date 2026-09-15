@@ -1,8 +1,8 @@
 //! AVTP Compressed Video Format (CVF), per IEEE Std 1722-2016.
 //!
-//! Carries H.264, MJPEG, or JPEG 2000 video payloads. The codec-specific
-//! extension headers are exposed as submodules: [`h264`], [`mjpeg`],
-//! [`jpeg2000`].
+//! Carries H.264, H.265, MJPEG, or JPEG 2000 video payloads. The
+//! codec-specific extension headers are exposed as submodules: [`h264`],
+//! [`mjpeg`], [`jpeg2000`].
 
 use open1722_sys as sys;
 
@@ -20,6 +20,7 @@ pub enum Codec {
     Mjpeg = 0x0,
     H264 = 0x1,
     Jpeg2000 = 0x2,
+    H265 = 0x3,
 }
 
 impl Codec {
@@ -28,6 +29,7 @@ impl Codec {
             sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_MJPEG => Self::Mjpeg,
             sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_H264 => Self::H264,
             sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_JPEG2000 => Self::Jpeg2000,
+            sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_H265 => Self::H265,
             other => {
                 return Err(Error::InvalidValue {
                     field: "CVF codec (format_subtype)",
@@ -42,6 +44,7 @@ impl Codec {
             Self::Mjpeg => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_MJPEG,
             Self::H264 => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_H264,
             Self::Jpeg2000 => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_JPEG2000,
+            Self::H265 => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_H265,
         }
     }
 }
@@ -57,12 +60,12 @@ pdu_struct! {
 impl<B: AsRef<[u8]>> Cvf<B> {
     pub fn subtype(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetSubtype(self.raw()) }
+        unsafe { sys::Avtp_CommonHeader_GetSubtype(self.raw() as *const sys::Avtp_CommonHeader_t) }
     }
 
     pub fn version(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetVersion(self.raw()) }
+        unsafe { sys::Avtp_CommonHeader_GetVersion(self.raw() as *const sys::Avtp_CommonHeader_t) }
     }
 
     pub fn sequence_num(&self) -> u8 {
@@ -136,7 +139,12 @@ impl<B: AsRef<[u8]>> Cvf<B> {
 impl<B: AsRef<[u8]> + AsMut<[u8]>> Cvf<B> {
     pub fn set_version(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_SetVersion(self.raw_mut(), value) };
+        unsafe {
+            sys::Avtp_CommonHeader_SetVersion(
+                self.raw_mut() as *mut sys::Avtp_CommonHeader_t,
+                value,
+            )
+        };
     }
 
     pub fn set_sequence_num(&mut self, value: u8) {
@@ -269,7 +277,7 @@ mod tests {
 
     #[test]
     fn codec_round_trips_for_each_variant() {
-        for codec in [Codec::Mjpeg, Codec::H264, Codec::Jpeg2000] {
+        for codec in [Codec::Mjpeg, Codec::H264, Codec::Jpeg2000, Codec::H265] {
             let mut buf = [0u8; HEADER_LEN];
             let mut cvf = Cvf::initialized(&mut buf[..]).unwrap();
             cvf.set_codec(codec);

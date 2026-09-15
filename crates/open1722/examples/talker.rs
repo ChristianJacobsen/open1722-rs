@@ -4,11 +4,7 @@
 
 use open1722::{
     Udp,
-    acf::{
-        can::{Can, Variant},
-        lin::Lin,
-        tscf::Tscf,
-    },
+    acf::{can::Can, lin::Lin, tscf::Tscf},
 };
 
 fn main() {
@@ -42,8 +38,7 @@ fn main() {
     // Layer 3: CAN ACF message inside the TSCF payload region.
     // create_acf_message resets the header, so set the bus id after it.
     let mut can = Can::initialized(can_buf).unwrap();
-    can.create_acf_message(0x100, &[0x11, 0x22], Variant::Classic)
-        .unwrap();
+    can.create_acf_message(0x100, &[0x11, 0x22], false).unwrap();
     can.set_bus_id(4);
 
     // Layer 4: LIN ACF message in the remaining TSCF payload region.

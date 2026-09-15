@@ -14,7 +14,7 @@
 
 use open1722::Udp;
 use open1722::acf::{
-    can::{Can, Variant},
+    can::Can,
     custom::vss::{Data, Path, Vss},
     tscf::Tscf,
 };
@@ -70,8 +70,7 @@ fn can_create_acf_message_matches_c_lib() {
 
     let mut rust = [0u8; PDU];
     let mut can = Can::initialized(&mut rust[..]).unwrap();
-    can.create_acf_message(0x1AB, &payload, Variant::Classic)
-        .unwrap();
+    can.create_acf_message(0x1AB, &payload, false).unwrap();
     // create_acf_message resets the header, so set the bus id after it.
     can.set_bus_id(7);
 
@@ -83,7 +82,7 @@ fn can_create_acf_message_matches_c_lib() {
             0x1AB,
             payload.as_ptr() as *mut u8,
             payload.len() as u16,
-            sys::Avtp_CanVariant_t::AVTP_CAN_CLASSIC,
+            false,
         );
         sys::Avtp_Can_SetCanBusId(pdu, 7);
     }

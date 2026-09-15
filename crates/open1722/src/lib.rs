@@ -13,8 +13,8 @@
 //!
 //! - AAF (PCM audio, see [`aaf::Pcm`])
 //! - CRF (clock reference, see [`Crf`])
-//! - CVF (compressed video, with H.264, MJPEG, and JPEG2000 sub-formats
-//!   under [`cvf`])
+//! - CVF (compressed video, with H.264, H.265, MJPEG, and JPEG2000
+//!   sub-formats under [`cvf`])
 //! - RVF (raw video, see [`Rvf`])
 //!
 //! AVTP Control Format (ACF) carriers and messages:

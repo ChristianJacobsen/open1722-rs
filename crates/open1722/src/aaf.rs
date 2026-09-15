@@ -116,12 +116,12 @@ pdu_struct! {
 impl<B: AsRef<[u8]>> Pcm<B> {
     pub fn subtype(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetSubtype(self.raw()) }
+        unsafe { sys::Avtp_CommonHeader_GetSubtype(self.raw() as *const sys::Avtp_CommonHeader_t) }
     }
 
     pub fn version(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetVersion(self.raw()) }
+        unsafe { sys::Avtp_CommonHeader_GetVersion(self.raw() as *const sys::Avtp_CommonHeader_t) }
     }
 
     pub fn sequence_num(&self) -> u8 {
@@ -205,7 +205,12 @@ impl<B: AsRef<[u8]>> Pcm<B> {
 impl<B: AsRef<[u8]> + AsMut<[u8]>> Pcm<B> {
     pub fn set_version(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetVersion(self.raw_mut(), value) };
+        unsafe {
+            sys::Avtp_CommonHeader_SetVersion(
+                self.raw_mut() as *mut sys::Avtp_CommonHeader_t,
+                value,
+            )
+        };
     }
 
     pub fn set_sequence_num(&mut self, value: u8) {

@@ -4,7 +4,6 @@
 use open1722_sys as sys;
 
 use crate::Result;
-use crate::acf::can::Variant;
 use crate::pdu::{check_payload_room, pdu_struct};
 
 pdu_struct! {
@@ -152,8 +151,8 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CanBrief<B> {
         unsafe { sys::Avtp_CanBrief_SetEsi(self.raw_mut(), value) };
     }
 
-    /// Copies `payload` into the message, sets the identifier, marks the
-    /// FD bit when needed, and finalizes the length/pad fields.
+    /// Copies `payload` into the message, sets the identifier, sets the
+    /// FD (CAN-FD format) flag, and finalizes the length/pad fields.
     ///
     /// Any header fields set before this call (bus id, flags) are reset;
     /// set them after building the message.
@@ -161,7 +160,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CanBrief<B> {
         &mut self,
         frame_id: u32,
         payload: &[u8],
-        variant: Variant,
+        fd_format: bool,
     ) -> Result<()> {
         check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
         // SAFETY: buffer length validated >= HEADER_LEN + padded payload by
@@ -173,7 +172,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CanBrief<B> {
                 frame_id,
                 payload.as_ptr() as *mut u8,
                 payload.len() as u16,
-                variant.as_sys(),
+                fd_format,
             );
         }
         Ok(())
@@ -224,8 +223,7 @@ mod tests {
     fn classic_frame_round_trip() {
         let mut backing = [0u8; HEADER_LEN + 8];
         let mut can = CanBrief::initialized(&mut backing[..]).unwrap();
-        can.create_acf_message(0x1AB, &[0x11, 0x22], Variant::Classic)
-            .unwrap();
+        can.create_acf_message(0x1AB, &[0x11, 0x22], false).unwrap();
         can.set_bus_id(2);
 
         assert_eq!(can.bus_id(), 2);

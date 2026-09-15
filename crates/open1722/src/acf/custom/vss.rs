@@ -162,6 +162,16 @@ impl<B: AsRef<[u8]>> Vss<B> {
         unsafe { sys::Avtp_Vss_IsMtv(self.raw()) }
     }
 
+    /// Envelope validity check: the ACF type byte is VSS, the buffer
+    /// covers the fixed header, and the declared ACF message length fits
+    /// within the buffer. Deliberately shallow -- the variable-length
+    /// path and data sections are not walked; the accessors clamp
+    /// internally inconsistent lengths instead.
+    pub fn is_valid(&self) -> bool {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe { sys::Avtp_Vss_IsValid(self.raw(), self.as_bytes().len()) }
+    }
+
     /// Reads the VSS path. Dispatches on the addressing mode header field;
     /// the caller is responsible for setting `set_path` (which writes that
     /// field) before reading.
@@ -455,6 +465,7 @@ fn read_var_payload(buf: &[u8], off: usize) -> Result<&[u8]> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::AcfMsgType;
 
     const MAX_PDU: usize = 1500;
 
@@ -490,6 +501,73 @@ mod tests {
             Vss::new(&[0u8; HEADER_LEN - 1][..]),
             Err(Error::BufferTooSmall { .. })
         ));
+    }
+
+    /// Ported from upstream unit/test-vss.c::vss_is_valid_* corruption
+    /// cases. IsValid is a shallow envelope check: it guarantees the
+    /// declared ACF message length fits the buffer so no getter can
+    /// overread; it does not verify the variable-length path and data
+    /// structure.
+    #[test]
+    fn is_valid_corruption_cases() {
+        // An Init-only PDU declares zero quadlets -- a frame shorter than
+        // its own fixed header.
+        let mut backing = [0u8; MAX_PDU];
+        let vss = Vss::initialized(&mut backing[..]).unwrap();
+        assert!(!vss.is_valid());
+
+        // 0, 1 and 2 quadlets all declare fewer bytes than the fixed
+        // header (3 quadlets).
+        let mut backing = [0u8; MAX_PDU];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        for quadlets in 0..=2u16 {
+            vss.set_acf_msg_length(quadlets);
+            assert!(!vss.is_valid(), "quadlets = {quadlets}");
+        }
+
+        // Envelope fits, but the ACF type byte is CAN rather than VSS.
+        let mut backing = [0u8; MAX_PDU];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        vss.as_bytes_mut()[0] = AcfMsgType::Can.as_u8() << 1;
+        vss.set_acf_msg_length(3);
+        assert!(!vss.is_valid());
+
+        // Regression scenario from the upstream listener report: the
+        // declared length is the 9-bit maximum (511 quadlets = 2044
+        // bytes) but the actual buffer is far smaller. Getter-side
+        // clamping alone cannot know the real buffer size, so the
+        // envelope check must reject the frame up front.
+        let mut backing = [0u8; 2044];
+        {
+            let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+            vss.set_acf_msg_length(511);
+        }
+        assert!(!Vss::new(&backing[..100]).unwrap().is_valid());
+        assert!(!Vss::new(&backing[..2043]).unwrap().is_valid());
+        // With a buffer that really is 2044 bytes the same frame passes.
+        assert!(Vss::new(&backing[..2044]).unwrap().is_valid());
+    }
+
+    /// Ported from upstream unit/test-vss.c::vss_is_valid_header_only_frame
+    /// + vss_is_valid_roundtrip.
+    #[test]
+    fn is_valid_accepts_header_only_and_full_frames() {
+        // Smallest frame that still passes: declared == buffer == header.
+        let mut backing = [0u8; HEADER_LEN];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        vss.set_acf_msg_length(HEADER_LEN as u16 / 4);
+        assert!(vss.is_valid());
+
+        // A talker-built full frame (interop path + float data) passes
+        // and decodes without surprises.
+        let mut backing = [0u8; MAX_PDU];
+        let mut vss = Vss::initialized(&mut backing[..]).unwrap();
+        vss.set_path(Path::Interop(b"Vehicle.Speed")).unwrap();
+        vss.set_data(Data::F32(1.0)).unwrap();
+        vss.set_payload_length(2 + 13 + 4).unwrap();
+        assert!(vss.is_valid());
+        assert_eq!(vss.path().unwrap(), Path::Interop(b"Vehicle.Speed"));
+        assert!(matches!(vss.data().unwrap(), Data::F32(v) if v == 1.0));
     }
 
     /// Ported from upstream unit/test-vss.c::vss_static_path.

@@ -5,7 +5,6 @@
 use open1722_sys as sys;
 
 use crate::Result;
-use crate::acf::can::Variant;
 use crate::pdu::{check_payload_room, pdu_struct};
 
 pdu_struct! {
@@ -174,15 +173,15 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CanV2<B> {
         };
     }
 
-    /// Copies `payload` into the message, sets the identifier, marks the
-    /// FD bit when needed, and finalizes the length/pad fields. Any
+    /// Copies `payload` into the message, sets the identifier, sets the
+    /// FD (CAN-FD format) flag, and finalizes the length/pad fields. Any
     /// header fields set before this call are reset; set additional
     /// fields after building the message.
     pub fn create_acf_message(
         &mut self,
         frame_id: u32,
         payload: &[u8],
-        variant: Variant,
+        fd_format: bool,
     ) -> Result<()> {
         check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
         // SAFETY: buffer length validated >= HEADER_LEN + padded payload by
@@ -194,7 +193,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CanV2<B> {
                 frame_id,
                 payload.as_ptr() as *mut u8,
                 payload.len() as u16,
-                variant.as_sys(),
+                fd_format,
             );
         }
         Ok(())
@@ -283,7 +282,7 @@ mod tests {
     fn create_acf_message_round_trip() {
         let mut backing = [0u8; HEADER_LEN + 8];
         let mut can = CanV2::initialized(&mut backing[..]).unwrap();
-        can.create_acf_message(0x1234_5678, &[0xAA; 8], Variant::Fd)
+        can.create_acf_message(0x1234_5678, &[0xAA; 8], true)
             .unwrap();
 
         assert!(can.is_extended());

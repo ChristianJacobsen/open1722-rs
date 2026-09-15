@@ -9,7 +9,7 @@ implementation of the IEEE 1722 (AVTP) standard for streaming audio,
 video, clock reference, and automotive bus traffic (CAN, LIN, FlexRay,
 MOST, GPC, sensor data) over a network.
 
-Pinned to upstream tag `v0.9.4` (September 2026).
+Pinned to upstream tag `v0.9.5` (September 2026).
 
 ## Format wrapper pattern
 
@@ -33,7 +33,7 @@ Stream formats from IEEE Std 1722-2016:
 
 - AAF (PCM audio)
 - CRF (clock reference)
-- CVF (compressed video, with H.264, MJPEG, and JPEG2000 sub-formats)
+- CVF (compressed video, with H.264, H.265, MJPEG, and JPEG2000 sub-formats)
 - RVF (raw video)
 
 AVTP Control Format (ACF) carriers and messages:
@@ -68,7 +68,7 @@ encapsulation header.
 ```rust
 use open1722::{
     Udp,
-    acf::{can::{Can, Variant}, lin::Lin, tscf::Tscf},
+    acf::{can::Can, lin::Lin, tscf::Tscf},
 };
 
 // Frame layout, all quadlet (4-byte) aligned:
@@ -101,7 +101,7 @@ tscf.set_stream_data_length(36); // CAN (20) + LIN (16)
 // Layer 3: CAN ACF message inside the TSCF payload region.
 // create_acf_message resets the header, so set the bus id after it.
 let mut can = Can::initialized(can_buf).unwrap();
-can.create_acf_message(0x100, &[0x11, 0x22], Variant::Classic).unwrap();
+can.create_acf_message(0x100, &[0x11, 0x22], false).unwrap();
 can.set_bus_id(4);
 
 // Layer 4: LIN ACF message in the remaining TSCF payload region.

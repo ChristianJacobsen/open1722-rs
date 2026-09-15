@@ -5,22 +5,6 @@ use open1722_sys as sys;
 use crate::Result;
 use crate::pdu::{check_payload_room, pdu_struct};
 
-/// Classic CAN or CAN-FD framing.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Variant {
-    Classic,
-    Fd,
-}
-
-impl Variant {
-    pub(crate) fn as_sys(self) -> sys::Avtp_CanVariant_t {
-        match self {
-            Variant::Classic => sys::Avtp_CanVariant_t::AVTP_CAN_CLASSIC,
-            Variant::Fd => sys::Avtp_CanVariant_t::AVTP_CAN_FD,
-        }
-    }
-}
-
 pdu_struct! {
     pub struct Can {
         c_type: sys::Avtp_Can_t,
@@ -178,9 +162,9 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         unsafe { sys::Avtp_Can_SetEsi(self.raw_mut(), value) };
     }
 
-    /// Copies `payload` into the message, sets the identifier, marks the
-    /// FD bit when needed, and finalizes the length/pad fields. Equivalent
-    /// to the C library's high-level talker helper.
+    /// Copies `payload` into the message, sets the identifier, sets the
+    /// FD (CAN-FD format) flag, and finalizes the length/pad fields.
+    /// Equivalent to the C library's high-level talker helper.
     ///
     /// Any header fields set before this call (bus id, flags, timestamp)
     /// are reset; set them after building the message.
@@ -188,7 +172,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
         &mut self,
         frame_id: u32,
         payload: &[u8],
-        variant: Variant,
+        fd_format: bool,
     ) -> Result<()> {
         check_payload_room(self.0.as_ref().len(), payload.len(), HEADER_LEN)?;
         // SAFETY: buffer length validated >= HEADER_LEN + padded payload by
@@ -200,7 +184,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Can<B> {
                 frame_id,
                 payload.as_ptr() as *mut u8,
                 payload.len() as u16,
-                variant.as_sys(),
+                fd_format,
             );
         }
         Ok(())
@@ -243,8 +227,7 @@ mod tests {
     fn classic_frame_round_trip() {
         let mut backing = [0u8; HEADER_LEN + 8];
         let mut can = Can::initialized(&mut backing[..]).unwrap();
-        can.create_acf_message(0x1AB, &[0x11, 0x22], Variant::Classic)
-            .unwrap();
+        can.create_acf_message(0x1AB, &[0x11, 0x22], false).unwrap();
         // create_acf_message resets the header, so set the bus id after it.
         can.set_bus_id(4);
 
@@ -260,7 +243,7 @@ mod tests {
     fn fd_frame_marks_format_and_extended_id() {
         let mut backing = [0u8; HEADER_LEN + 16];
         let mut can = Can::initialized(&mut backing[..]).unwrap();
-        can.create_acf_message(0x1234_5678, &[0xAA; 8], Variant::Fd)
+        can.create_acf_message(0x1234_5678, &[0xAA; 8], true)
             .unwrap();
 
         assert!(can.is_fd_format());
@@ -295,9 +278,7 @@ mod tests {
     fn create_rejects_undersized_buffer() {
         let mut backing = [0u8; HEADER_LEN + 1];
         let mut can = Can::initialized(&mut backing[..]).unwrap();
-        let err = can
-            .create_acf_message(0x10, &[0; 8], Variant::Classic)
-            .unwrap_err();
+        let err = can.create_acf_message(0x10, &[0; 8], false).unwrap_err();
         assert!(matches!(err, Error::BufferTooSmall { .. }));
     }
 
@@ -318,7 +299,7 @@ mod tests {
         for len in 0..=payload.len() {
             let mut backing = [0u8; HEADER_LEN + 16];
             let mut can = Can::initialized(&mut backing[..]).unwrap();
-            can.create_acf_message(0x123, &payload[..len], Variant::Classic)
+            can.create_acf_message(0x123, &payload[..len], false)
                 .unwrap();
 
             assert_eq!(can.payload(), &payload[..len], "len = {len}");
@@ -346,7 +327,7 @@ mod tests {
         // A properly-formed classic CAN frame with an 8-byte payload is valid.
         let mut backing = [0u8; 64];
         let mut can = Can::initialized(&mut backing[..]).unwrap();
-        can.create_acf_message(0x123, &[0, 1, 2, 3, 4, 5, 6, 7], Variant::Classic)
+        can.create_acf_message(0x123, &[0, 1, 2, 3, 4, 5, 6, 7], false)
             .unwrap();
         assert!(can.is_valid());
 
