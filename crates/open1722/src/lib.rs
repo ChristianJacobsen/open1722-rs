@@ -21,6 +21,8 @@
 //!
 //! - [`acf::tscf`] / [`acf::ntscf`]: time- and non-time-synchronous
 //!   carriers for one or more ACF messages.
+//! - [`AcfCommon`]: the 4-byte common header of every ACF message, for
+//!   dispatching on [`AcfMsgType`] and walking chains of ACF messages.
 //! - [`acf::can`], [`acf::can_brief`]: CAN bus messages.
 //! - [`acf::can_v2`], [`acf::can_brief_v2`]: IEEE 1722-2025 CAN framing.
 //! - [`acf::can_xl`], [`acf::can_xl_brief`]: CAN XL messages.
@@ -122,6 +124,7 @@
 
 pub mod aaf;
 pub mod acf;
+mod acf_common;
 mod common;
 mod common_header;
 mod crf;
@@ -135,6 +138,7 @@ pub use rvf::Rvf;
 
 pub use crf::Crf;
 
+pub use acf_common::AcfCommon;
 pub use common::{AcfMsgType, Subtype};
 pub use common_header::CommonHeader;
 pub use error::{Error, Result};

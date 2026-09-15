@@ -39,6 +39,8 @@ Stream formats from IEEE Std 1722-2016:
 AVTP Control Format (ACF) carriers and messages:
 
 - TSCF, NTSCF (time- and non-time-synchronous carriers)
+- ACF common header (`AcfCommon`, for dispatching on message type and
+  walking chains of ACF messages)
 - CAN, CAN Brief
 - CAN V2, CAN Brief V2 (IEEE 1722-2025 framing)
 - CAN XL, CAN XL Brief
