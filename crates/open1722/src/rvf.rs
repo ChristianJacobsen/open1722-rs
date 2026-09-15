@@ -129,7 +129,7 @@ pub enum FrameRate {
     Fps200 = 0x33,
     Fps240 = 0x34,
     Fps300 = 0x35,
-    User = 0x0F,
+    User = 0xFF,
 }
 
 impl FrameRate {
@@ -649,6 +649,23 @@ mod tests {
         assert_eq!(FrameRate::Fps60.fps(), Some(60));
         assert_eq!(FrameRate::Fps24.fps(), Some(24));
         assert_eq!(FrameRate::User.fps(), None);
+    }
+
+    /// The user-defined frame rate code is 0xFF on the wire; the enum
+    /// discriminant must match it like every other variant.
+    #[test]
+    fn user_frame_rate_wire_value() {
+        let mut backing = [0u8; HEADER_LEN];
+        let mut rvf = Rvf::initialized(&mut backing[..]).unwrap();
+        rvf.set_frame_rate(FrameRate::User);
+
+        assert_eq!(FrameRate::User as u8, 0xFF);
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        let raw = unsafe {
+            sys::Avtp_Rvf_GetField(rvf.raw(), sys::Avtp_RvfField_t::AVTP_RVF_FIELD_FRAME_RATE)
+        };
+        assert_eq!(raw, 0xFF);
+        assert_eq!(rvf.frame_rate().unwrap(), FrameRate::User);
     }
 
     #[test]
