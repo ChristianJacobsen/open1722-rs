@@ -12,12 +12,15 @@
 //! When extending: add a new `#[test]` per format. Build a representative
 //! PDU two ways, `assert_eq!` the byte buffers.
 
+use open1722::Rvf;
 use open1722::Udp;
 use open1722::acf::{
     can::Can,
     custom::vss::{Data, Path, Vss},
     tscf::Tscf,
 };
+use open1722::rvf::raw_header::{HEADER_LEN as RVF_RAW_HEADER_LEN, RvfRawHeader};
+use open1722::rvf::{FrameRate, HEADER_LEN as RVF_HEADER_LEN, PixelDepth, PixelFormat};
 use open1722_sys as sys;
 
 const PDU: usize = 256;
@@ -88,6 +91,47 @@ fn can_create_acf_message_matches_c_lib() {
     }
 
     assert_eq!(rust, c);
+}
+
+#[test]
+fn rvf_raw_header_user_frame_rate_matches_c_lib() {
+    // The user-defined frame rate code is 0xFF, unlike every other
+    // user-defined code in RVF (0x0F); pin the full frame byte-for-byte
+    // so a wrapper-side discriminant slip cannot go unnoticed.
+    let mut rust = [0u8; PDU];
+    {
+        let (rvf_buf, raw_buf) = rust.split_at_mut(RVF_HEADER_LEN);
+        let mut rvf = Rvf::initialized(rvf_buf).unwrap();
+        rvf.set_stream_data_length(RVF_RAW_HEADER_LEN as u16);
+        let mut raw = RvfRawHeader::initialized(raw_buf).unwrap();
+        raw.set_pixel_depth(PixelDepth::Bits10);
+        raw.set_pixel_format(PixelFormat::Yuv422);
+        raw.set_frame_rate(FrameRate::User);
+    }
+
+    let mut c = [0u8; PDU];
+    unsafe {
+        let rvf = c.as_mut_ptr() as *mut sys::Avtp_Rvf_t;
+        sys::Avtp_Rvf_Init(rvf);
+        sys::Avtp_Rvf_SetStreamDataLength(rvf, sys::AVTP_RVF_RAW_HEADER_LEN as u16);
+        let raw = c.as_mut_ptr().add(RVF_HEADER_LEN) as *mut sys::Avtp_RvfRawHeader_t;
+        sys::Avtp_RvfRawHeader_Init(raw);
+        sys::Avtp_RvfRawHeader_SetPixelDepth(
+            raw,
+            sys::Avtp_RvfPixelDepth_t::AVTP_RVF_PIXEL_DEPTH_10,
+        );
+        sys::Avtp_RvfRawHeader_SetPixelFormat(
+            raw,
+            sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_422,
+        );
+        sys::Avtp_RvfRawHeader_SetFrameRate(
+            raw,
+            sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_USER,
+        );
+    }
+
+    assert_eq!(rust, c);
+    assert_eq!(rust[RVF_HEADER_LEN + 2], 0xFF);
 }
 
 #[test]

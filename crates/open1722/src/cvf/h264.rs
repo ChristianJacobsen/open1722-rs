@@ -4,12 +4,10 @@ use open1722_sys as sys;
 
 use crate::pdu::pdu_struct;
 
-// NOTE: upstream uses the symbol `AVTP_H246_HEADER_LEN`, with the digits
-// transposed. The value is correct (one quadlet); only the name is wrong.
 pdu_struct! {
     pub struct H264 {
         c_type: sys::Avtp_H264_t,
-        header_len: sys::AVTP_H246_HEADER_LEN,
+        header_len: sys::AVTP_H264_HEADER_LEN,
         init: sys::Avtp_H264_Init,
     }
 }

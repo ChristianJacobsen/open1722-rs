@@ -1,9 +1,17 @@
 //! AVTP Raw Video Format (RVF), per IEEE Std 1722-2016.
+//!
+//! The pixel format, frame rate, and line fields live in the raw header,
+//! the 8-byte fragment at the start of the stream data; see
+//! [`RvfRawHeader`].
 
 use open1722_sys as sys;
 
 use crate::pdu::pdu_struct;
 use crate::{Error, Result};
+
+pub mod raw_header;
+
+pub use raw_header::RvfRawHeader;
 
 /// Pixel depth in bits per sample.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -327,98 +335,65 @@ impl<B: AsRef<[u8]>> Rvf<B> {
         unsafe { sys::Avtp_Rvf_GetEvt(self.raw()) }
     }
 
-    pub fn num_lines(&self) -> u8 {
+    /// Structural validity check: subtype, stream data length covering
+    /// the raw header, and buffer containment.
+    pub fn is_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetNumLines(self.raw()) }
-    }
-
-    /// Sequence number of the current line within the frame.
-    pub fn i_seq_num(&self) -> u8 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetISeqNum(self.raw()) }
-    }
-
-    pub fn line_number(&self) -> u16 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetLineNumber(self.raw()) }
-    }
-
-    pub fn pixel_depth(&self) -> Result<PixelDepth> {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Rvf_GetPixelDepth(self.raw()) };
-        PixelDepth::from_sys(raw)
-    }
-
-    pub fn pixel_format(&self) -> Result<PixelFormat> {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Rvf_GetPixelFormat(self.raw()) };
-        PixelFormat::from_sys(raw)
-    }
-
-    pub fn frame_rate(&self) -> Result<FrameRate> {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Rvf_GetFrameRate(self.raw()) };
-        FrameRate::from_sys(raw)
-    }
-
-    pub fn colorspace(&self) -> Result<Colorspace> {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Rvf_GetColorspace(self.raw()) };
-        Colorspace::from_sys(raw)
+        unsafe { sys::Avtp_Rvf_IsValid(self.raw(), self.0.as_ref().len()) }
     }
 
     /// `pd` bit; semantics are spec-defined.
     pub fn is_pd(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetPd(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsPd(self.raw()) }
     }
 
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetSv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsSv(self.raw()) }
     }
 
     /// `mr`: the media clock has been reset since the last PDU.
     pub fn is_media_reset(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetMr(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsMr(self.raw()) }
     }
 
     /// `tv`: `avtp_timestamp` carries a meaningful value.
     pub fn is_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetTv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsTv(self.raw()) }
     }
 
     /// `tu`: the talker is uncertain about the timestamp.
     pub fn is_timestamp_uncertain(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetTu(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsTu(self.raw()) }
     }
 
     /// `ap` bit; semantics are spec-defined (see IEEE Std 1722-2016).
     pub fn is_ap(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetAp(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsAp(self.raw()) }
     }
 
     /// `f` bit; semantics are spec-defined.
     pub fn is_f(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetF(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsF(self.raw()) }
     }
 
     /// `ef` bit; semantics are spec-defined.
     pub fn is_ef(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetEf(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsEf(self.raw()) }
     }
 
     /// `i` bit; spec-defined, commonly used to indicate interlaced video.
     pub fn is_i(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetI(self.raw()) != 0 }
+        unsafe { sys::Avtp_Rvf_IsI(self.raw()) }
     }
 }
 
@@ -468,138 +443,49 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Rvf<B> {
         unsafe { sys::Avtp_Rvf_SetEvt(self.raw_mut(), value) };
     }
 
-    pub fn set_num_lines(&mut self, value: u8) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetNumLines(self.raw_mut(), value) };
-    }
-
-    pub fn set_i_seq_num(&mut self, value: u8) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetISeqNum(self.raw_mut(), value) };
-    }
-
-    pub fn set_line_number(&mut self, value: u16) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetLineNumber(self.raw_mut(), value) };
-    }
-
-    pub fn set_pixel_depth(&mut self, value: PixelDepth) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetPixelDepth(self.raw_mut(), value.as_sys()) };
-    }
-
-    pub fn set_pixel_format(&mut self, value: PixelFormat) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetPixelFormat(self.raw_mut(), value.as_sys()) };
-    }
-
-    pub fn set_frame_rate(&mut self, value: FrameRate) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetFrameRate(self.raw_mut(), value.as_sys()) };
-    }
-
-    pub fn set_colorspace(&mut self, value: Colorspace) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetColorspace(self.raw_mut(), value.as_sys()) };
-    }
-
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableSv(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableSv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetSv(self.raw_mut(), value) };
     }
 
     pub fn set_media_reset(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableMr(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableMr(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetMr(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableTv(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableTv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetTv(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_uncertain(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableTu(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableTu(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetTu(self.raw_mut(), value) };
     }
 
     pub fn set_ap(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableAp(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableAp(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetAp(self.raw_mut(), value) };
     }
 
     pub fn set_f(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableF(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableF(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetF(self.raw_mut(), value) };
     }
 
     pub fn set_ef(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableEf(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableEf(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetEf(self.raw_mut(), value) };
     }
 
     pub fn set_i(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnableI(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisableI(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetI(self.raw_mut(), value) };
     }
 
     pub fn set_pd(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Rvf_EnablePd(self.raw_mut());
-            } else {
-                sys::Avtp_Rvf_DisablePd(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Rvf_SetPd(self.raw_mut(), value) };
     }
 }
 
@@ -607,12 +493,14 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Rvf<B> {
 mod tests {
     use super::*;
     use crate::Subtype;
+    use crate::pdu::assert_discriminants_match_upstream;
 
     #[test]
     fn init_sets_rvf_subtype() {
         let mut buf = [0u8; HEADER_LEN];
         let rvf = Rvf::initialized(&mut buf[..]).unwrap();
         assert_eq!(rvf.subtype(), Subtype::Rvf.as_u8());
+        assert!(rvf.is_stream_id_valid());
     }
 
     #[test]
@@ -624,10 +512,6 @@ mod tests {
         rvf.set_avtp_timestamp(0x1234_5678);
         rvf.set_active_pixels(1920);
         rvf.set_total_lines(1080);
-        rvf.set_pixel_depth(PixelDepth::Bits10);
-        rvf.set_pixel_format(PixelFormat::Yuv422);
-        rvf.set_frame_rate(FrameRate::Fps60);
-        rvf.set_colorspace(Colorspace::Bt709);
         rvf.set_i(true);
         rvf.set_f(true);
 
@@ -636,10 +520,6 @@ mod tests {
         assert_eq!(rvf.avtp_timestamp(), 0x1234_5678);
         assert_eq!(rvf.active_pixels(), 1920);
         assert_eq!(rvf.total_lines(), 1080);
-        assert_eq!(rvf.pixel_depth().unwrap(), PixelDepth::Bits10);
-        assert_eq!(rvf.pixel_format().unwrap(), PixelFormat::Yuv422);
-        assert_eq!(rvf.frame_rate().unwrap(), FrameRate::Fps60);
-        assert_eq!(rvf.colorspace().unwrap(), Colorspace::Bt709);
         assert!(rvf.is_i());
         assert!(rvf.is_f());
     }
@@ -651,21 +531,76 @@ mod tests {
         assert_eq!(FrameRate::User.fps(), None);
     }
 
-    /// The user-defined frame rate code is 0xFF on the wire; the enum
-    /// discriminant must match it like every other variant.
     #[test]
-    fn user_frame_rate_wire_value() {
-        let mut backing = [0u8; HEADER_LEN];
-        let mut rvf = Rvf::initialized(&mut backing[..]).unwrap();
-        rvf.set_frame_rate(FrameRate::User);
+    fn pixel_depth_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            PixelDepth::Bits8 => sys::Avtp_RvfPixelDepth_t::AVTP_RVF_PIXEL_DEPTH_8,
+            PixelDepth::Bits10 => sys::Avtp_RvfPixelDepth_t::AVTP_RVF_PIXEL_DEPTH_10,
+            PixelDepth::Bits12 => sys::Avtp_RvfPixelDepth_t::AVTP_RVF_PIXEL_DEPTH_12,
+            PixelDepth::Bits16 => sys::Avtp_RvfPixelDepth_t::AVTP_RVF_PIXEL_DEPTH_16,
+            PixelDepth::User => sys::Avtp_RvfPixelDepth_t::AVTP_RVF_PIXEL_DEPTH_USER,
+        }
+    }
 
-        assert_eq!(FrameRate::User as u8, 0xFF);
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe {
-            sys::Avtp_Rvf_GetField(rvf.raw(), sys::Avtp_RvfField_t::AVTP_RVF_FIELD_FRAME_RATE)
-        };
-        assert_eq!(raw, 0xFF);
-        assert_eq!(rvf.frame_rate().unwrap(), FrameRate::User);
+    #[test]
+    fn pixel_format_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            PixelFormat::Mono => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_MONO,
+            PixelFormat::Yuv411 => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_411,
+            PixelFormat::Yuv420 => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_420,
+            PixelFormat::Yuv422 => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_422,
+            PixelFormat::Yuv444 => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_444,
+            PixelFormat::Yuv4224 => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_4224,
+            PixelFormat::Yuv4444 => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_4444,
+            PixelFormat::BayerGrbg => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_BAYER_GRBG,
+            PixelFormat::BayerRggb => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_BAYER_RGGB,
+            PixelFormat::BayerBggr => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_BAYER_BGGR,
+            PixelFormat::BayerGbrg => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_BAYER_GBRG,
+            PixelFormat::User => sys::Avtp_RvfPixelFormat_t::AVTP_RVF_PIXEL_FORMAT_USER,
+        }
+    }
+
+    #[test]
+    fn frame_rate_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            FrameRate::Fps1 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_1,
+            FrameRate::Fps2 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_2,
+            FrameRate::Fps5 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_5,
+            FrameRate::Fps10 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_10,
+            FrameRate::Fps15 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_15,
+            FrameRate::Fps20 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_20,
+            FrameRate::Fps24 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_24,
+            FrameRate::Fps25 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_25,
+            FrameRate::Fps30 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_30,
+            FrameRate::Fps48 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_48,
+            FrameRate::Fps50 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_50,
+            FrameRate::Fps60 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_60,
+            FrameRate::Fps72 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_72,
+            FrameRate::Fps85 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_85,
+            FrameRate::Fps100 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_100,
+            FrameRate::Fps120 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_120,
+            FrameRate::Fps150 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_150,
+            FrameRate::Fps200 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_200,
+            FrameRate::Fps240 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_240,
+            FrameRate::Fps300 => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_300,
+            FrameRate::User => sys::Avtp_RvfFrameRate_t::AVTP_RVF_FRAME_RATE_USER,
+        }
+    }
+
+    #[test]
+    fn colorspace_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            Colorspace::YCbCr => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_YCbCr,
+            Colorspace::Srgb => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_SRGB,
+            Colorspace::YCgCo => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_YCgCo,
+            Colorspace::Gray => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_GRAY,
+            Colorspace::Xyz => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_XYZ,
+            Colorspace::YCm => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_YCM,
+            Colorspace::Bt601 => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_BT_601,
+            Colorspace::Bt709 => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_BT_709,
+            Colorspace::ItuBt => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_ITU_BT,
+            Colorspace::User => sys::Avtp_RvfColorspace_t::AVTP_RVF_COLORSPACE_USER,
+        }
     }
 
     #[test]

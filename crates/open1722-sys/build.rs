@@ -27,12 +27,8 @@ fn main() {
     println!("cargo:rerun-if-changed={}", vendor.display());
 }
 
-/// Copies the vendored sources into `OUT_DIR/open1722`, applies upstream
-/// fixes that are safe in normal use (single header per TU) but trip bindgen
-/// when every header is pulled into one translation unit, and stages the
+/// Copies the vendored sources into `OUT_DIR/open1722` and stages the
 /// `SharedExports.c` companion export unit.
-///
-/// TODO: upstream these identifier-collision fixes to COVESA/Open1722.
 fn stage_and_patch(vendor: &Path, out_dir: &Path) -> PathBuf {
     let staged = out_dir.join("open1722");
     if staged.exists() {
@@ -40,14 +36,6 @@ fn stage_and_patch(vendor: &Path, out_dir: &Path) -> PathBuf {
     }
     copy_tree(&vendor.join("include"), &staged.join("include"));
     copy_tree(&vendor.join("src"), &staged.join("src"));
-
-    // Crf.h:43 has a wrong struct tag (`struct Avtp_Cvf`) that collides with
-    // the genuine struct in Cvf.h.
-    patch(
-        &staged.join("include/avtp/Crf.h"),
-        "typedef struct Avtp_Cvf {",
-        "typedef struct Avtp_Crf {",
-    );
 
     stage_shared_exports(&staged);
 
@@ -93,23 +81,6 @@ fn copy_tree(src: &Path, dst: &Path) {
     }
 }
 
-fn patch(file: &Path, from: &str, to: &str) {
-    patch_all(file, &[(from, to)]);
-}
-
-fn patch_all(file: &Path, replacements: &[(&str, &str)]) {
-    let mut contents = fs::read_to_string(file).expect("read patch target");
-    for (from, to) in replacements {
-        assert!(
-            contents.contains(from),
-            "expected to find `{from}` in {}",
-            file.display()
-        );
-        contents = contents.replace(from, to);
-    }
-    fs::write(file, contents).expect("write patched file");
-}
-
 fn compile(src: &Path, include: &Path) {
     let sources = collect_files(src, "c");
     cc::Build::new()
@@ -144,7 +115,6 @@ fn generate_bindings(include: &Path, out_dir: &Path) {
         .blocklist_function("avtp_pdu_get")
         .blocklist_function("avtp_pdu_set")
         .blocklist_type("avtp_common_pdu")
-        .blocklist_type("avtp_stream_pdu")
         .default_enum_style(bindgen::EnumVariation::NewType {
             is_bitfield: false,
             is_global: false,

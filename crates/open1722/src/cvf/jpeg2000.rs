@@ -34,7 +34,7 @@ impl<B: AsRef<[u8]>> Jpeg2000<B> {
     /// `t`: tile-based packetization in use.
     pub fn is_tile_packetized(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Jpeg2000_GetT(self.raw()) != 0 }
+        unsafe { sys::Avtp_Jpeg2000_IsT(self.raw()) }
     }
 
     pub fn priority(&self) -> u8 {
@@ -71,13 +71,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Jpeg2000<B> {
 
     pub fn set_tile_packetized(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Jpeg2000_EnableT(self.raw_mut());
-            } else {
-                sys::Avtp_Jpeg2000_DisableT(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Jpeg2000_SetT(self.raw_mut(), value) };
     }
 
     pub fn set_priority(&mut self, value: u8) {

@@ -185,3 +185,55 @@ impl Datatype {
         Self::from_raw(value.0 as u8)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::pdu::assert_discriminants_match_upstream;
+
+    #[test]
+    fn addr_mode_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            AddrMode::Interop => sys::Vss_AddrMode_t::VSS_INTEROP_MODE,
+            AddrMode::StaticId => sys::Vss_AddrMode_t::VSS_STATIC_ID_MODE,
+        }
+    }
+
+    #[test]
+    fn op_code_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            OpCode::PublishCurrentValue => sys::Vss_OpCode_t::PUBLISH_CURRENT_VALUE,
+            OpCode::PublishTargetValue => sys::Vss_OpCode_t::PUBLISH_TARGET_VALUE,
+        }
+    }
+
+    #[test]
+    fn datatype_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            Datatype::U8 => sys::Vss_Datatype_t::VSS_UINT8,
+            Datatype::I8 => sys::Vss_Datatype_t::VSS_INT8,
+            Datatype::U16 => sys::Vss_Datatype_t::VSS_UINT16,
+            Datatype::I16 => sys::Vss_Datatype_t::VSS_INT16,
+            Datatype::U32 => sys::Vss_Datatype_t::VSS_UINT32,
+            Datatype::I32 => sys::Vss_Datatype_t::VSS_INT32,
+            Datatype::U64 => sys::Vss_Datatype_t::VSS_UINT64,
+            Datatype::I64 => sys::Vss_Datatype_t::VSS_INT64,
+            Datatype::Bool => sys::Vss_Datatype_t::VSS_BOOL,
+            Datatype::F32 => sys::Vss_Datatype_t::VSS_FLOAT,
+            Datatype::F64 => sys::Vss_Datatype_t::VSS_DOUBLE,
+            Datatype::String => sys::Vss_Datatype_t::VSS_STRING,
+            Datatype::U8Array => sys::Vss_Datatype_t::VSS_UINT8_ARRAY,
+            Datatype::I8Array => sys::Vss_Datatype_t::VSS_INT8_ARRAY,
+            Datatype::U16Array => sys::Vss_Datatype_t::VSS_UINT16_ARRAY,
+            Datatype::I16Array => sys::Vss_Datatype_t::VSS_INT16_ARRAY,
+            Datatype::U32Array => sys::Vss_Datatype_t::VSS_UINT32_ARRAY,
+            Datatype::I32Array => sys::Vss_Datatype_t::VSS_INT32_ARRAY,
+            Datatype::U64Array => sys::Vss_Datatype_t::VSS_UINT64_ARRAY,
+            Datatype::I64Array => sys::Vss_Datatype_t::VSS_INT64_ARRAY,
+            Datatype::BoolArray => sys::Vss_Datatype_t::VSS_BOOL_ARRAY,
+            Datatype::F32Array => sys::Vss_Datatype_t::VSS_FLOAT_ARRAY,
+            Datatype::F64Array => sys::Vss_Datatype_t::VSS_DOUBLE_ARRAY,
+            Datatype::StringArray => sys::Vss_Datatype_t::VSS_STRING_ARRAY,
+        }
+    }
+}

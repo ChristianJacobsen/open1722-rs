@@ -15,7 +15,8 @@
 //! - CRF (clock reference, see [`Crf`])
 //! - CVF (compressed video, with H.264, H.265, MJPEG, and JPEG2000
 //!   sub-formats under [`cvf`])
-//! - RVF (raw video, see [`Rvf`])
+//! - RVF (raw video, see [`Rvf`]; the sampling attributes live in the
+//!   raw header at the start of the stream data, see [`RvfRawHeader`])
 //!
 //! AVTP Control Format (ACF) carriers and messages:
 //!
@@ -127,14 +128,14 @@ pub mod acf;
 mod acf_common;
 mod common;
 mod common_header;
-mod crf;
+pub mod crf;
 pub mod cvf;
 mod error;
 mod pdu;
-mod rvf;
+pub mod rvf;
 mod udp;
 
-pub use rvf::Rvf;
+pub use rvf::{Rvf, RvfRawHeader};
 
 pub use crf::Crf;
 

@@ -9,7 +9,7 @@ implementation of the IEEE 1722 (AVTP) standard for streaming audio,
 video, clock reference, and automotive bus traffic (CAN, LIN, FlexRay,
 MOST, GPC, sensor data) over a network.
 
-Pinned to upstream tag `v0.9.5` (September 2026).
+Pinned to upstream tag `v0.9.6` (September 2026).
 
 ## Format wrapper pattern
 
@@ -34,7 +34,7 @@ Stream formats from IEEE Std 1722-2016:
 - AAF (PCM audio)
 - CRF (clock reference)
 - CVF (compressed video, with H.264, H.265, MJPEG, and JPEG2000 sub-formats)
-- RVF (raw video)
+- RVF (raw video, plus the raw-header fragment in its stream data)
 
 AVTP Control Format (ACF) carriers and messages:
 

@@ -100,3 +100,23 @@ macro_rules! pdu_struct {
 }
 
 pub(crate) use pdu_struct;
+
+/// Pins every wrapper-enum discriminant to the upstream constant it
+/// mirrors. The two are equal by construction today, but nothing in the
+/// type system keeps them aligned when the upstream value changes or a
+/// variant is added by hand.
+#[cfg(test)]
+macro_rules! assert_discriminants_match_upstream {
+    ($($rust:expr => $sys:expr),+ $(,)?) => {
+        $(
+            assert_eq!(
+                $rust as u32,
+                $sys.0,
+                concat!(stringify!($rust), " does not match ", stringify!($sys))
+            );
+        )+
+    };
+}
+
+#[cfg(test)]
+pub(crate) use assert_discriminants_match_upstream;

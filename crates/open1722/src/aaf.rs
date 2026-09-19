@@ -66,19 +66,19 @@ pub enum SampleRate {
 }
 
 impl SampleRate {
-    fn from_sys(value: sys::Avtp_AafNsr_t) -> Result<Self> {
+    fn from_sys(value: sys::Avtp_PcmNsr_t) -> Result<Self> {
         Ok(match value {
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_USER => Self::User,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_8KHZ => Self::Hz8000,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_16KHZ => Self::Hz16000,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_32KHZ => Self::Hz32000,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_44_1KHZ => Self::Hz44100,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_48KHZ => Self::Hz48000,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_88_2KHZ => Self::Hz88200,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_96KHZ => Self::Hz96000,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_176_4KHZ => Self::Hz176400,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_192KHZ => Self::Hz192000,
-            sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_24KHZ => Self::Hz24000,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_USER => Self::User,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_8KHZ => Self::Hz8000,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_16KHZ => Self::Hz16000,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_32KHZ => Self::Hz32000,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_44_1KHZ => Self::Hz44100,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_48KHZ => Self::Hz48000,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_88_2KHZ => Self::Hz88200,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_96KHZ => Self::Hz96000,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_176_4KHZ => Self::Hz176400,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_192KHZ => Self::Hz192000,
+            sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_24KHZ => Self::Hz24000,
             other => {
                 return Err(Error::InvalidValue {
                     field: "AAF NSR",
@@ -88,19 +88,19 @@ impl SampleRate {
         })
     }
 
-    fn as_sys(self) -> sys::Avtp_AafNsr_t {
+    fn as_sys(self) -> sys::Avtp_PcmNsr_t {
         match self {
-            Self::User => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_USER,
-            Self::Hz8000 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_8KHZ,
-            Self::Hz16000 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_16KHZ,
-            Self::Hz32000 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_32KHZ,
-            Self::Hz44100 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_44_1KHZ,
-            Self::Hz48000 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_48KHZ,
-            Self::Hz88200 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_88_2KHZ,
-            Self::Hz96000 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_96KHZ,
-            Self::Hz176400 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_176_4KHZ,
-            Self::Hz192000 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_192KHZ,
-            Self::Hz24000 => sys::Avtp_AafNsr_t::AVTP_AAF_PCM_NSR_24KHZ,
+            Self::User => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_USER,
+            Self::Hz8000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_8KHZ,
+            Self::Hz16000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_16KHZ,
+            Self::Hz32000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_32KHZ,
+            Self::Hz44100 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_44_1KHZ,
+            Self::Hz48000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_48KHZ,
+            Self::Hz88200 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_88_2KHZ,
+            Self::Hz96000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_96KHZ,
+            Self::Hz176400 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_176_4KHZ,
+            Self::Hz192000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_192KHZ,
+            Self::Hz24000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_24KHZ,
         }
     }
 }
@@ -174,31 +174,38 @@ impl<B: AsRef<[u8]>> Pcm<B> {
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetSv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Pcm_IsSv(self.raw()) }
     }
 
     /// `mr`: the media clock has been reset since the last PDU.
     pub fn is_media_reset(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetMr(self.raw()) != 0 }
+        unsafe { sys::Avtp_Pcm_IsMr(self.raw()) }
     }
 
     /// `tv`: `avtp_timestamp` carries a meaningful value.
     pub fn is_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetTv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Pcm_IsTv(self.raw()) }
     }
 
     /// `tu`: the talker is uncertain about the timestamp.
     pub fn is_timestamp_uncertain(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetTu(self.raw()) != 0 }
+        unsafe { sys::Avtp_Pcm_IsTu(self.raw()) }
     }
 
     /// `sp`: sparse timestamping (only some PDUs carry valid timestamps).
     pub fn is_sparse_timestamp(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetSp(self.raw()) == sys::Avtp_AafSp_t::AVTP_AAF_PCM_SP_SPARSE }
+        unsafe { sys::Avtp_Pcm_IsSp(self.raw()) }
+    }
+
+    /// Structural validity check (subtype and stream data length
+    /// consistent with the buffer size).
+    pub fn is_valid(&self) -> bool {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe { sys::Avtp_Pcm_IsValid(self.raw(), self.0.as_ref().len()) }
     }
 }
 
@@ -260,57 +267,27 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Pcm<B> {
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Pcm_EnableSv(self.raw_mut());
-            } else {
-                sys::Avtp_Pcm_DisableSv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Pcm_SetSv(self.raw_mut(), value) };
     }
 
     pub fn set_media_reset(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Pcm_EnableMr(self.raw_mut());
-            } else {
-                sys::Avtp_Pcm_DisableMr(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Pcm_SetMr(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Pcm_EnableTv(self.raw_mut());
-            } else {
-                sys::Avtp_Pcm_DisableTv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Pcm_SetTv(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_uncertain(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Pcm_EnableTu(self.raw_mut());
-            } else {
-                sys::Avtp_Pcm_DisableTu(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Pcm_SetTu(self.raw_mut(), value) };
     }
 
     pub fn set_sparse_timestamp(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Pcm_EnableSp(self.raw_mut());
-            } else {
-                sys::Avtp_Pcm_DisableSp(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Pcm_SetSp(self.raw_mut(), value) };
     }
 }
 
@@ -318,6 +295,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Pcm<B> {
 mod tests {
     use super::*;
     use crate::Subtype;
+    use crate::pdu::assert_discriminants_match_upstream;
 
     #[test]
     fn init_sets_aaf_subtype_and_stream_valid() {
@@ -325,6 +303,35 @@ mod tests {
         let pcm = Pcm::initialized(&mut buf[..]).unwrap();
         assert_eq!(pcm.subtype(), Subtype::Aaf.as_u8());
         assert!(pcm.is_stream_id_valid());
+    }
+
+    #[test]
+    fn format_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            Format::User => sys::Avtp_AafFormat_t::AVTP_AAF_FORMAT_USER,
+            Format::Float32 => sys::Avtp_AafFormat_t::AVTP_AAF_FORMAT_FLOAT_32BIT,
+            Format::Int32 => sys::Avtp_AafFormat_t::AVTP_AAF_FORMAT_INT_32BIT,
+            Format::Int24 => sys::Avtp_AafFormat_t::AVTP_AAF_FORMAT_INT_24BIT,
+            Format::Int16 => sys::Avtp_AafFormat_t::AVTP_AAF_FORMAT_INT_16BIT,
+            Format::Aes3_32 => sys::Avtp_AafFormat_t::AVTP_AAF_FORMAT_AES3_32BIT,
+        }
+    }
+
+    #[test]
+    fn sample_rate_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            SampleRate::User => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_USER,
+            SampleRate::Hz8000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_8KHZ,
+            SampleRate::Hz16000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_16KHZ,
+            SampleRate::Hz32000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_32KHZ,
+            SampleRate::Hz44100 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_44_1KHZ,
+            SampleRate::Hz48000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_48KHZ,
+            SampleRate::Hz88200 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_88_2KHZ,
+            SampleRate::Hz96000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_96KHZ,
+            SampleRate::Hz176400 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_176_4KHZ,
+            SampleRate::Hz192000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_192KHZ,
+            SampleRate::Hz24000 => sys::Avtp_PcmNsr_t::AVTP_PCM_NSR_24KHZ,
+        }
     }
 
     #[test]

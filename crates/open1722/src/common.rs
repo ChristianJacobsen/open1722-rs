@@ -147,6 +147,8 @@ impl TryFrom<u8> for AcfMsgType {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pdu::assert_discriminants_match_upstream;
+    use open1722_sys as sys;
 
     #[test]
     fn subtype_round_trip() {
@@ -169,6 +171,63 @@ mod tests {
         for v in [0x0u8, 0x1, 0x9, 0x0B, 0x11, 0x22] {
             let t = AcfMsgType::try_from(v).unwrap();
             assert_eq!(t.as_u8(), v);
+        }
+    }
+
+    #[test]
+    fn subtype_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            Subtype::Iidc61883 => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_61883_IIDC,
+            Subtype::MmaStream => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_MMA_STREAM,
+            Subtype::Aaf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_AAF,
+            Subtype::Cvf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_CVF,
+            Subtype::Crf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_CRF,
+            Subtype::Tscf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_TSCF,
+            Subtype::Svf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_SVF,
+            Subtype::Rvf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_RVF,
+            Subtype::AefContinuous => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_AEF_CONTINUOUS,
+            Subtype::VsfStream => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_VSF_STREAM,
+            Subtype::EfStream => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_EF_STREAM,
+            Subtype::Ntscf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_NTSCF,
+            Subtype::Ieee8021Mlaa => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_IEEE_8021_MLAA,
+            Subtype::Escf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_ESCF,
+            Subtype::Eecf => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_EECF,
+            Subtype::AefDiscrete => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_AEF_DISCRETE,
+            Subtype::Adp => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_ADP,
+            Subtype::Aecp => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_AECP,
+            Subtype::Acmp => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_ACMP,
+            Subtype::Maap => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_MAAP,
+            Subtype::EfControl => sys::Avtp_AvtpSubtype_t::AVTP_SUBTYPE_EF_CONTROL,
+        }
+    }
+
+    #[test]
+    fn acf_msg_type_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            AcfMsgType::FlexRay => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_FLEXRAY,
+            AcfMsgType::Can => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CAN,
+            AcfMsgType::CanBrief => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CAN_BRIEF,
+            AcfMsgType::Lin => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_LIN,
+            AcfMsgType::Most => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_MOST,
+            AcfMsgType::Gpc => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_GPC,
+            AcfMsgType::Serial => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_SERIAL,
+            AcfMsgType::Parallel => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_PARALLEL,
+            AcfMsgType::Sensor => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_SENSOR,
+            AcfMsgType::SensorBrief => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_SENSOR_BRIEF,
+            AcfMsgType::Aecp => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_AECP,
+            AcfMsgType::Ancillary => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_ANCILLARY,
+            AcfMsgType::Gisf => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_GISF,
+            AcfMsgType::ByteBus => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_BYTE_BUS,
+            AcfMsgType::ByteBusBrief => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_BYTE_BUS_BRIEF,
+            AcfMsgType::I2c => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_I2C,
+            AcfMsgType::I2cBrief => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_I2C_BRIEF,
+            AcfMsgType::CanXl => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CAN_XL,
+            AcfMsgType::CanXlBrief => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CAN_XL_BRIEF,
+            AcfMsgType::CanV2 => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CAN_V2,
+            AcfMsgType::CanBriefV2 => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CAN_BRIEF_V2,
+            AcfMsgType::LinV2 => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_LIN_V2,
+            AcfMsgType::Checksum => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CHECKSUM,
+            AcfMsgType::Crc => sys::Avtp_AcfMsgType_t::AVTP_ACF_TYPE_CRC,
         }
     }
 }

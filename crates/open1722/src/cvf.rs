@@ -102,37 +102,44 @@ impl<B: AsRef<[u8]>> Cvf<B> {
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetSv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Cvf_IsSv(self.raw()) }
     }
 
     /// `mr`: the media clock has been reset since the last PDU.
     pub fn is_media_reset(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetMr(self.raw()) != 0 }
+        unsafe { sys::Avtp_Cvf_IsMr(self.raw()) }
     }
 
     /// `tv`: `avtp_timestamp` carries a meaningful value.
     pub fn is_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetTv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Cvf_IsTv(self.raw()) }
     }
 
     /// `tu`: the talker is uncertain about the timestamp.
     pub fn is_timestamp_uncertain(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetTu(self.raw()) != 0 }
+        unsafe { sys::Avtp_Cvf_IsTu(self.raw()) }
     }
 
     /// `ptv`: codec-specific presentation timestamp is valid.
     pub fn is_presentation_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetPtv(self.raw()) != 0 }
+        unsafe { sys::Avtp_Cvf_IsPtv(self.raw()) }
     }
 
     /// `m` (marker): this PDU completes a video frame.
     pub fn is_marker(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Cvf_GetM(self.raw()) != 0 }
+        unsafe { sys::Avtp_Cvf_IsM(self.raw()) }
+    }
+
+    /// Structural validity check (subtype and stream data length
+    /// consistent with the buffer size).
+    pub fn is_valid(&self) -> bool {
+        // SAFETY: buffer length validated >= HEADER_LEN at construction.
+        unsafe { sys::Avtp_Cvf_IsValid(self.raw(), self.0.as_ref().len()) }
     }
 }
 
@@ -179,68 +186,32 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Cvf<B> {
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Cvf_EnableSv(self.raw_mut());
-            } else {
-                sys::Avtp_Cvf_DisableSv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Cvf_SetSv(self.raw_mut(), value) };
     }
 
     pub fn set_media_reset(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Cvf_EnableMr(self.raw_mut());
-            } else {
-                sys::Avtp_Cvf_DisableMr(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Cvf_SetMr(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Cvf_EnableTv(self.raw_mut());
-            } else {
-                sys::Avtp_Cvf_DisableTv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Cvf_SetTv(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_uncertain(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Cvf_EnableTu(self.raw_mut());
-            } else {
-                sys::Avtp_Cvf_DisableTu(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Cvf_SetTu(self.raw_mut(), value) };
     }
 
     pub fn set_presentation_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Cvf_EnablePtv(self.raw_mut());
-            } else {
-                sys::Avtp_Cvf_DisablePtv(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Cvf_SetPtv(self.raw_mut(), value) };
     }
 
     pub fn set_marker(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            if value {
-                sys::Avtp_Cvf_EnableM(self.raw_mut());
-            } else {
-                sys::Avtp_Cvf_DisableM(self.raw_mut());
-            }
-        }
+        unsafe { sys::Avtp_Cvf_SetM(self.raw_mut(), value) };
     }
 }
 
@@ -248,6 +219,17 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Cvf<B> {
 mod tests {
     use super::*;
     use crate::Subtype;
+    use crate::pdu::assert_discriminants_match_upstream;
+
+    #[test]
+    fn codec_discriminants_match_upstream() {
+        assert_discriminants_match_upstream! {
+            Codec::Mjpeg => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_MJPEG,
+            Codec::H264 => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_H264,
+            Codec::Jpeg2000 => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_JPEG2000,
+            Codec::H265 => sys::Avtp_CvfFormatSubtype_t::AVTP_CVF_FORMAT_SUBTYPE_H265,
+        }
+    }
 
     #[test]
     fn init_sets_cvf_subtype() {
