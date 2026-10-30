@@ -12,6 +12,8 @@ pub mod flexray;
 pub mod gbb;
 pub mod gisf;
 pub mod gpc;
+pub mod i2c;
+pub mod i2c_brief;
 pub mod lin;
 pub mod most;
 pub mod ntscf;

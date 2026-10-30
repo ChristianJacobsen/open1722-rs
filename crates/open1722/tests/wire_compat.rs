@@ -18,6 +18,8 @@ use open1722::Udp;
 use open1722::acf::{
     can::Can,
     custom::vss::{Data, Path, Vss},
+    i2c::I2c,
+    i2c_brief::I2cBrief,
     tscf::TscfV0,
     tscf::TscfV1,
 };
@@ -120,6 +122,42 @@ fn can_create_acf_message_matches_c_lib() {
             false,
         );
         sys::Avtp_Can_SetCanBusId(pdu, 7);
+    }
+
+    assert_eq!(rust, c);
+}
+
+#[test]
+fn i2c_create_acf_message_matches_c_lib() {
+    let mut rust = [0u8; PDU];
+    let mut i2c = I2c::initialized(&mut rust[..]).unwrap();
+    i2c.create_acf_message(0xA, true, 0x12, 0xB, 0xC, 0xD);
+    // create_acf_message resets the header, so set the bus id after it.
+    i2c.set_bus_id(0x456);
+
+    let mut c = [0u8; PDU];
+    unsafe {
+        let pdu = c.as_mut_ptr() as *mut sys::Avtp_I2C_t;
+        sys::Avtp_I2C_CreateAcfMessage(pdu, 0xA, true, 0x12, 0xB, 0xC, 0xD);
+        sys::Avtp_I2C_SetI2CBusId(pdu, 0x456);
+    }
+
+    assert_eq!(rust, c);
+}
+
+#[test]
+fn i2c_brief_create_acf_message_matches_c_lib() {
+    let mut rust = [0u8; PDU];
+    let mut brief = I2cBrief::initialized(&mut rust[..]).unwrap();
+    brief.create_acf_message(0xA, true, 0x12, 0xB, 0xC, 0xD);
+    // create_acf_message resets the header, so set the bus id after it.
+    brief.set_bus_id(0x456);
+
+    let mut c = [0u8; PDU];
+    unsafe {
+        let pdu = c.as_mut_ptr() as *mut sys::Avtp_I2CBrief_t;
+        sys::Avtp_I2CBrief_CreateAcfMessage(pdu, 0xA, true, 0x12, 0xB, 0xC, 0xD);
+        sys::Avtp_I2CBrief_SetI2CBusId(pdu, 0x456);
     }
 
     assert_eq!(rust, c);

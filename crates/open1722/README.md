@@ -49,6 +49,7 @@ AVTP Control Format (ACF) carriers and messages:
 - CAN, CAN Brief
 - CAN V2, CAN Brief V2 (IEEE 1722-2025 framing)
 - CAN XL, CAN XL Brief
+- I2C, I2C Brief
 - LIN
 - FlexRay
 - MOST
