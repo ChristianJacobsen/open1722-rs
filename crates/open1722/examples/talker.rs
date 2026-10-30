@@ -4,7 +4,7 @@
 
 use open1722::{
     Udp,
-    acf::{can::Can, lin::Lin, tscf::Tscf},
+    acf::{can::Can, lin::Lin, tscf::TscfV0},
 };
 
 fn main() {
@@ -28,7 +28,7 @@ fn main() {
     udp.set_encapsulation_seq_no(1);
 
     // Layer 2: TSCF stream container.
-    let mut tscf = Tscf::initialized(tscf_buf).unwrap();
+    let mut tscf = TscfV0::initialized(tscf_buf).unwrap();
     tscf.set_sequence_num(123);
     tscf.set_stream_id(0xAABB_CCDD_EEFF);
     tscf.set_avtp_timestamp(0x1122_3344);
