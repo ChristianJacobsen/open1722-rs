@@ -89,9 +89,9 @@ impl Pull {
 
 pdu_struct! {
     pub struct Crf {
-        c_type: sys::Avtp_Crf_t,
-        header_len: sys::AVTP_CRF_HEADER_LEN,
-        init: sys::Avtp_Crf_Init,
+        c_type: sys::Avtp_CrfV0_t,
+        header_len: sys::AVTP_CRF_HEADER_LEN_V0,
+        init: sys::Avtp_Crf_InitV0,
     }
 }
 
@@ -107,68 +107,69 @@ impl<B: AsRef<[u8]>> Crf<B> {
     }
 
     pub fn sequence_num(&self) -> u8 {
+        // The version 0 field is 8 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_GetSequenceNum(self.raw()) }
+        unsafe { sys::Avtp_Crf_GetSequenceNum_V0(self.raw()) as u8 }
     }
 
     /// CRF type (identifies what kind of clock reference this stream
     /// carries).
     pub fn crf_type(&self) -> Result<CrfType> {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Crf_GetType(self.raw()) };
+        let raw = unsafe { sys::Avtp_Crf_GetType_V0(self.raw()) };
         CrfType::from_sys(raw)
     }
 
     pub fn stream_id(&self) -> u64 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_GetStreamId(self.raw()) }
+        unsafe { sys::Avtp_Crf_GetStreamId_V0(self.raw()) }
     }
 
     pub fn pull(&self) -> Result<Pull> {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Crf_GetPull(self.raw()) };
+        let raw = unsafe { sys::Avtp_Crf_GetPull_V0(self.raw()) };
         Pull::from_sys(raw)
     }
 
     /// Base frequency in Hz.
     pub fn base_frequency(&self) -> u32 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_GetBaseFrequency(self.raw()) }
+        unsafe { sys::Avtp_Crf_GetBaseFrequency_V0(self.raw()) }
     }
 
     pub fn crf_data_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_GetCrfDataLength(self.raw()) }
+        unsafe { sys::Avtp_Crf_GetCrfDataLength_V0(self.raw()) }
     }
 
     pub fn timestamp_interval(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_GetTimestampInterval(self.raw()) }
+        unsafe { sys::Avtp_Crf_GetTimestampInterval_V0(self.raw()) }
     }
 
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_IsSv(self.raw()) }
+        unsafe { sys::Avtp_Crf_IsSv_V0(self.raw()) }
     }
 
     /// `mr`: the media clock has been reset since the last PDU.
     pub fn is_media_reset(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_IsMr(self.raw()) }
+        unsafe { sys::Avtp_Crf_IsMr_V0(self.raw()) }
     }
 
     /// `tu`: the talker is uncertain about the timestamp.
     pub fn is_timestamp_uncertain(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_IsTu(self.raw()) }
+        unsafe { sys::Avtp_Crf_IsTu_V0(self.raw()) }
     }
 
     /// `fs`: the CRF "FS" bit. Semantics are spec-defined and depend on
     /// `crf_type`; see IEEE Std 1722-2016.
     pub fn is_fs(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_IsFs(self.raw()) }
+        unsafe { sys::Avtp_Crf_IsFs_V0(self.raw()) }
     }
 
     /// Structural validity check (subtype and CRF data length
@@ -192,57 +193,57 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Crf<B> {
 
     pub fn set_sequence_num(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetSequenceNum(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetSequenceNum_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_crf_type(&mut self, value: CrfType) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetType(self.raw_mut(), value.as_sys()) };
+        unsafe { sys::Avtp_Crf_SetType_V0(self.raw_mut(), value.as_sys()) };
     }
 
     pub fn set_stream_id(&mut self, value: u64) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetStreamId(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetStreamId_V0(self.raw_mut(), value) };
     }
 
     pub fn set_pull(&mut self, value: Pull) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetPull(self.raw_mut(), value.as_sys()) };
+        unsafe { sys::Avtp_Crf_SetPull_V0(self.raw_mut(), value.as_sys()) };
     }
 
     pub fn set_base_frequency(&mut self, value: u32) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetBaseFrequency(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetBaseFrequency_V0(self.raw_mut(), value) };
     }
 
     pub fn set_crf_data_length(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetCrfDataLength(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetCrfDataLength_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_interval(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetTimestampInterval(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetTimestampInterval_V0(self.raw_mut(), value) };
     }
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetSv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetSv_V0(self.raw_mut(), value) };
     }
 
     pub fn set_media_reset(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetMr(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetMr_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_uncertain(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetTu(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetTu_V0(self.raw_mut(), value) };
     }
 
     pub fn set_fs(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Crf_SetFs(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Crf_SetFs_V0(self.raw_mut(), value) };
     }
 }
 

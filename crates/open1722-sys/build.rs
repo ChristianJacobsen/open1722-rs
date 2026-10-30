@@ -43,10 +43,11 @@ fn stage_and_patch(vendor: &Path, out_dir: &Path) -> PathBuf {
 }
 
 /// Upstream's `src/avtp/export/InlineExports.c` forces external definitions
-/// of every format-header accessor, but keeps the shared dependency headers
-/// (Byteorder, AcfCommon) in static-inline mode, so their functions get no
-/// exported symbols. Stage a companion export unit that covers them, so
-/// every function the bindings declare also resolves at link time.
+/// of every accessor, including the field-access engine (Utils) and the ACF
+/// common header, but keeps the Byteorder leaf header in static-inline mode,
+/// so its functions get no exported symbols. Stage a companion export unit
+/// that covers Byteorder alone, so every function the bindings declare
+/// resolves at link time exactly once.
 ///
 /// The macro must be defined empty before any Open1722 header is included:
 /// `Inline.h` only applies its `static inline` default when `OPEN1722_INLINE`
@@ -55,13 +56,10 @@ fn stage_shared_exports(staged: &Path) {
     fs::write(
         staged.join("src/avtp/export/SharedExports.c"),
         concat!(
-            "#include <string.h>\n",
-            "\n",
             "#undef OPEN1722_INLINE\n",
             "#define OPEN1722_INLINE\n",
             "\n",
             "#include \"avtp/Byteorder.h\"\n",
-            "#include \"avtp/acf/AcfCommon.h\"\n",
         ),
     )
     .expect("write SharedExports.c");
@@ -112,9 +110,7 @@ fn generate_bindings(include: &Path, out_dir: &Path) {
         .allowlist_type("Avtp_.*")
         .allowlist_function("Avtp_.*")
         .allowlist_var("AVTP_.*")
-        .blocklist_function("avtp_pdu_get")
-        .blocklist_function("avtp_pdu_set")
-        .blocklist_type("avtp_common_pdu")
+        .allowlist_var("AVTPDU_.*")
         .default_enum_style(bindgen::EnumVariation::NewType {
             is_bitfield: false,
             is_global: false,

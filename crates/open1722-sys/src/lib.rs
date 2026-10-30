@@ -5,5 +5,6 @@
 #![allow(dead_code)]
 #![allow(unsafe_op_in_unsafe_fn)]
 #![allow(clippy::missing_safety_doc)]
+#![allow(rustdoc::invalid_html_tags)]
 
 include!(concat!(env!("OUT_DIR"), "/bindings.rs"));

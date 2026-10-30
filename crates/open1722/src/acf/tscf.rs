@@ -7,9 +7,9 @@ use crate::pdu::pdu_struct;
 
 pdu_struct! {
     pub struct Tscf {
-        c_type: sys::Avtp_Tscf_t,
-        header_len: sys::AVTP_TSCF_HEADER_LEN,
-        init: sys::Avtp_Tscf_Init,
+        c_type: sys::Avtp_TscfV0_t,
+        header_len: sys::AVTP_TSCF_HEADER_LEN_V0,
+        init: sys::Avtp_Tscf_InitV0,
     }
 }
 
@@ -25,47 +25,49 @@ impl<B: AsRef<[u8]>> Tscf<B> {
     }
 
     pub fn sequence_num(&self) -> u8 {
+        // The version 0 field is 8 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_GetSequenceNum(self.raw()) }
+        unsafe { sys::Avtp_Tscf_GetSequenceNum_V0(self.raw()) as u8 }
     }
 
     pub fn stream_id(&self) -> u64 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_GetStreamId(self.raw()) }
+        unsafe { sys::Avtp_Tscf_GetStreamId_V0(self.raw()) }
     }
 
     pub fn avtp_timestamp(&self) -> u32 {
+        // The version 0 field is 32 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_GetAvtpTimestamp(self.raw()) }
+        unsafe { sys::Avtp_Tscf_GetAvtpTimestamp_V0(self.raw()) as u32 }
     }
 
     pub fn stream_data_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_GetStreamDataLength(self.raw()) }
+        unsafe { sys::Avtp_Tscf_GetStreamDataLength_V0(self.raw()) }
     }
 
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_IsSv(self.raw()) }
+        unsafe { sys::Avtp_Tscf_IsSv_V0(self.raw()) }
     }
 
     /// `mr`: the media clock has been reset since the last PDU.
     pub fn is_media_reset(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_IsMr(self.raw()) }
+        unsafe { sys::Avtp_Tscf_IsMr_V0(self.raw()) }
     }
 
     /// `tv`: `avtp_timestamp` carries a meaningful value.
     pub fn is_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_IsTv(self.raw()) }
+        unsafe { sys::Avtp_Tscf_IsTv_V0(self.raw()) }
     }
 
     /// `tu`: the talker is uncertain about the timestamp.
     pub fn is_timestamp_uncertain(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_IsTu(self.raw()) }
+        unsafe { sys::Avtp_Tscf_IsTu_V0(self.raw()) }
     }
 
     /// Stream data slice, clamped to the buffer in case the declared length
@@ -97,42 +99,42 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Tscf<B> {
 
     pub fn set_sequence_num(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetSequenceNum(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetSequenceNum_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_stream_id(&mut self, value: u64) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetStreamId(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetStreamId_V0(self.raw_mut(), value) };
     }
 
     pub fn set_avtp_timestamp(&mut self, value: u32) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetAvtpTimestamp(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetAvtpTimestamp_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_stream_data_length(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetStreamDataLength(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetStreamDataLength_V0(self.raw_mut(), value) };
     }
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetSv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetSv_V0(self.raw_mut(), value) };
     }
 
     pub fn set_media_reset(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetMr(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetMr_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetTv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetTv_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_uncertain(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Tscf_SetTu(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Tscf_SetTu_V0(self.raw_mut(), value) };
     }
 }
 

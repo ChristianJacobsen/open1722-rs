@@ -107,9 +107,9 @@ impl SampleRate {
 
 pdu_struct! {
     pub struct Pcm {
-        c_type: sys::Avtp_Pcm_t,
-        header_len: sys::AVTP_PCM_HEADER_LEN,
-        init: sys::Avtp_Pcm_Init,
+        c_type: sys::Avtp_PcmV0_t,
+        header_len: sys::AVTP_PCM_HEADER_LEN_V0,
+        init: sys::Avtp_Pcm_InitV0,
     }
 }
 
@@ -125,80 +125,82 @@ impl<B: AsRef<[u8]>> Pcm<B> {
     }
 
     pub fn sequence_num(&self) -> u8 {
+        // The version 0 field is 8 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetSequenceNum(self.raw()) }
+        unsafe { sys::Avtp_Pcm_GetSequenceNum_V0(self.raw()) as u8 }
     }
 
     pub fn stream_id(&self) -> u64 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetStreamId(self.raw()) }
+        unsafe { sys::Avtp_Pcm_GetStreamId_V0(self.raw()) }
     }
 
     pub fn avtp_timestamp(&self) -> u32 {
+        // The version 0 field is 32 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetAvtpTimestamp(self.raw()) }
+        unsafe { sys::Avtp_Pcm_GetAvtpTimestamp_V0(self.raw()) as u32 }
     }
 
     pub fn format(&self) -> Result<Format> {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Pcm_GetFormat(self.raw()) };
+        let raw = unsafe { sys::Avtp_Pcm_GetFormat_V0(self.raw()) };
         Format::from_sys(raw)
     }
 
     pub fn sample_rate(&self) -> Result<SampleRate> {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Pcm_GetNsr(self.raw()) };
+        let raw = unsafe { sys::Avtp_Pcm_GetNsr_V0(self.raw()) };
         SampleRate::from_sys(raw)
     }
 
     pub fn channels_per_frame(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetChannelsPerFrame(self.raw()) }
+        unsafe { sys::Avtp_Pcm_GetChannelsPerFrame_V0(self.raw()) }
     }
 
     pub fn bit_depth(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetBitDepth(self.raw()) }
+        unsafe { sys::Avtp_Pcm_GetBitDepth_V0(self.raw()) }
     }
 
     pub fn stream_data_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetStreamDataLength(self.raw()) }
+        unsafe { sys::Avtp_Pcm_GetStreamDataLength_V0(self.raw()) }
     }
 
     pub fn evt(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetEvt(self.raw()) }
+        unsafe { sys::Avtp_Pcm_GetEvt_V0(self.raw()) }
     }
 
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsSv(self.raw()) }
+        unsafe { sys::Avtp_Pcm_IsSv_V0(self.raw()) }
     }
 
     /// `mr`: the media clock has been reset since the last PDU.
     pub fn is_media_reset(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsMr(self.raw()) }
+        unsafe { sys::Avtp_Pcm_IsMr_V0(self.raw()) }
     }
 
     /// `tv`: `avtp_timestamp` carries a meaningful value.
     pub fn is_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsTv(self.raw()) }
+        unsafe { sys::Avtp_Pcm_IsTv_V0(self.raw()) }
     }
 
     /// `tu`: the talker is uncertain about the timestamp.
     pub fn is_timestamp_uncertain(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsTu(self.raw()) }
+        unsafe { sys::Avtp_Pcm_IsTu_V0(self.raw()) }
     }
 
     /// `sp`: sparse timestamping (only some PDUs carry valid timestamps).
     pub fn is_sparse_timestamp(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsSp(self.raw()) }
+        unsafe { sys::Avtp_Pcm_IsSp_V0(self.raw()) }
     }
 
     /// Structural validity check (subtype and stream data length
@@ -222,72 +224,72 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Pcm<B> {
 
     pub fn set_sequence_num(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetSequenceNum(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetSequenceNum_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_stream_id(&mut self, value: u64) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetStreamId(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetStreamId_V0(self.raw_mut(), value) };
     }
 
     pub fn set_avtp_timestamp(&mut self, value: u32) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetAvtpTimestamp(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetAvtpTimestamp_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_format(&mut self, value: Format) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetFormat(self.raw_mut(), value.as_sys()) };
+        unsafe { sys::Avtp_Pcm_SetFormat_V0(self.raw_mut(), value.as_sys()) };
     }
 
     pub fn set_sample_rate(&mut self, value: SampleRate) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetNsr(self.raw_mut(), value.as_sys()) };
+        unsafe { sys::Avtp_Pcm_SetNsr_V0(self.raw_mut(), value.as_sys()) };
     }
 
     pub fn set_channels_per_frame(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetChannelsPerFrame(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetChannelsPerFrame_V0(self.raw_mut(), value) };
     }
 
     pub fn set_bit_depth(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetBitDepth(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetBitDepth_V0(self.raw_mut(), value) };
     }
 
     pub fn set_stream_data_length(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetStreamDataLength(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetStreamDataLength_V0(self.raw_mut(), value) };
     }
 
     pub fn set_evt(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetEvt(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetEvt_V0(self.raw_mut(), value) };
     }
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetSv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetSv_V0(self.raw_mut(), value) };
     }
 
     pub fn set_media_reset(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetMr(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetMr_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetTv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetTv_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_uncertain(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetTu(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetTu_V0(self.raw_mut(), value) };
     }
 
     pub fn set_sparse_timestamp(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetSp(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Pcm_SetSp_V0(self.raw_mut(), value) };
     }
 }
 

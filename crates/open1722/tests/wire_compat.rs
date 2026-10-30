@@ -56,12 +56,12 @@ fn tscf_setters_match_c_lib() {
 
     let mut c = [0u8; PDU];
     unsafe {
-        let pdu = c.as_mut_ptr() as *mut sys::Avtp_Tscf_t;
-        sys::Avtp_Tscf_Init(pdu);
-        sys::Avtp_Tscf_SetSequenceNum(pdu, 42);
-        sys::Avtp_Tscf_SetStreamId(pdu, 0xAABB_CCDD_EEFF_0011);
-        sys::Avtp_Tscf_SetAvtpTimestamp(pdu, 0xDEAD_BEEF);
-        sys::Avtp_Tscf_SetTv(pdu, true);
+        let pdu = c.as_mut_ptr() as *mut sys::Avtp_TscfV0_t;
+        sys::Avtp_Tscf_InitV0(pdu);
+        sys::Avtp_Tscf_SetSequenceNum_V0(pdu, 42);
+        sys::Avtp_Tscf_SetStreamId_V0(pdu, 0xAABB_CCDD_EEFF_0011);
+        sys::Avtp_Tscf_SetAvtpTimestamp_V0(pdu, 0xDEAD_BEEF);
+        sys::Avtp_Tscf_SetTv_V0(pdu, true);
     }
 
     assert_eq!(rust, c);
@@ -111,9 +111,9 @@ fn rvf_raw_header_user_frame_rate_matches_c_lib() {
 
     let mut c = [0u8; PDU];
     unsafe {
-        let rvf = c.as_mut_ptr() as *mut sys::Avtp_Rvf_t;
-        sys::Avtp_Rvf_Init(rvf);
-        sys::Avtp_Rvf_SetStreamDataLength(rvf, sys::AVTP_RVF_RAW_HEADER_LEN as u16);
+        let rvf = c.as_mut_ptr() as *mut sys::Avtp_RvfV0_t;
+        sys::Avtp_Rvf_InitV0(rvf);
+        sys::Avtp_Rvf_SetStreamDataLength_V0(rvf, sys::AVTP_RVF_RAW_HEADER_LEN as u16);
         let raw = c.as_mut_ptr().add(RVF_HEADER_LEN) as *mut sys::Avtp_RvfRawHeader_t;
         sys::Avtp_RvfRawHeader_Init(raw);
         sys::Avtp_RvfRawHeader_SetPixelDepth(
