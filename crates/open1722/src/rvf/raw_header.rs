@@ -5,7 +5,8 @@
 //!
 //! The raw header is not a standalone PDU: it has no subtype of its own
 //! and is validated through the enclosing RVF PDU (see
-//! [`Rvf::is_valid`](crate::rvf::Rvf::is_valid)).
+//! [`RvfV0::is_valid`](crate::rvf::RvfV0::is_valid) and
+//! [`RvfV1::is_valid`](crate::rvf::RvfV1::is_valid)).
 
 use open1722_sys as sys;
 

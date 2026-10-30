@@ -20,7 +20,9 @@ Every PDU format is wrapped in a type generic over byte storage:
   `Arc<[u8]>`, etc).
 - Write methods additionally require `B: AsMut<[u8]>`.
 - Construction validates that the buffer is at least the format's
-  `HEADER_LEN` bytes; otherwise returns `Error::BufferTooSmall`.
+  header length; otherwise returns `Error::BufferTooSmall`. The length
+  constant is `HEADER_LEN`, or `HEADER_LEN_V0` / `HEADER_LEN_V1` for
+  the stream formats, which have one header layout per AVTPDU version.
 
 Wrappers do not allocate. They are views over storage the caller owns.
 Two construction entry points: `new` (parser side - wraps existing
@@ -29,7 +31,10 @@ format's `Init` to set the type byte and any defaulted flag bits).
 
 ## Supported formats
 
-Stream formats from IEEE Std 1722-2016:
+Stream formats, one wrapper per AVTPDU header version: `XxxV0`
+(IEEE Std 1722-2016) and `XxxV1` (IEEE Std 1722-2025) have different
+header layouts. Listeners parse with the `Xxx` enum, which reads the
+version byte and returns the matching wrapper:
 
 - AAF (PCM audio)
 - CRF (clock reference)
@@ -70,7 +75,7 @@ encapsulation header.
 ```rust
 use open1722::{
     Udp,
-    acf::{can::Can, lin::Lin, tscf::Tscf},
+    acf::{can::Can, lin::Lin, tscf::TscfV0},
 };
 
 // Frame layout, all quadlet (4-byte) aligned:
@@ -93,7 +98,7 @@ let mut udp = Udp::initialized(udp_buf).unwrap();
 udp.set_encapsulation_seq_no(1);
 
 // Layer 2: TSCF stream container.
-let mut tscf = Tscf::initialized(tscf_buf).unwrap();
+let mut tscf = TscfV0::initialized(tscf_buf).unwrap();
 tscf.set_sequence_num(123);
 tscf.set_stream_id(0xAABB_CCDD_EEFF);
 tscf.set_avtp_timestamp(0x1122_3344);

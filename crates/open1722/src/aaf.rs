@@ -1,8 +1,13 @@
-//! AVTP Audio Format (AAF), PCM payload, per IEEE Std 1722-2016.
+//! AVTP Audio Format (AAF), PCM payload.
+//!
+//! Version 0 ([`PcmV0`], IEEE Std 1722-2016) and version 1
+//! ([`PcmV1`], IEEE Std 1722-2025) have different header layouts. On
+//! the listener side, [`Pcm::new`] reads the version byte and returns
+//! the matching wrapper.
 
 use open1722_sys as sys;
 
-use crate::pdu::pdu_struct;
+use crate::pdu::{pdu_struct, seq_v0, stream_accessors, stream_versions, ts_v0};
 use crate::{Error, Result};
 
 /// AAF sample format. `User` covers application-defined formats; the rest
@@ -106,205 +111,160 @@ impl SampleRate {
 }
 
 pdu_struct! {
-    pub struct Pcm {
+    /// AAF PCM stream PDU with a version 0 header.
+    pub struct PcmV0 {
         c_type: sys::Avtp_PcmV0_t,
-        header_len: sys::AVTP_PCM_HEADER_LEN_V0,
+        header_len: HEADER_LEN_V0 = sys::AVTP_PCM_HEADER_LEN_V0,
         init: sys::Avtp_Pcm_InitV0,
     }
 }
 
-impl<B: AsRef<[u8]>> Pcm<B> {
-    pub fn subtype(&self) -> u8 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_CommonHeader_GetSubtype(self.raw() as *const sys::Avtp_CommonHeader_t) }
-    }
-
-    pub fn version(&self) -> u8 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_CommonHeader_GetVersion(self.raw() as *const sys::Avtp_CommonHeader_t) }
-    }
-
-    pub fn sequence_num(&self) -> u8 {
-        // The version 0 field is 8 bits wide, so the cast cannot truncate.
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetSequenceNum_V0(self.raw()) as u8 }
-    }
-
-    pub fn stream_id(&self) -> u64 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetStreamId_V0(self.raw()) }
-    }
-
-    pub fn avtp_timestamp(&self) -> u32 {
-        // The version 0 field is 32 bits wide, so the cast cannot truncate.
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetAvtpTimestamp_V0(self.raw()) as u32 }
-    }
-
-    pub fn format(&self) -> Result<Format> {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Pcm_GetFormat_V0(self.raw()) };
-        Format::from_sys(raw)
-    }
-
-    pub fn sample_rate(&self) -> Result<SampleRate> {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        let raw = unsafe { sys::Avtp_Pcm_GetNsr_V0(self.raw()) };
-        SampleRate::from_sys(raw)
-    }
-
-    pub fn channels_per_frame(&self) -> u16 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetChannelsPerFrame_V0(self.raw()) }
-    }
-
-    pub fn bit_depth(&self) -> u8 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetBitDepth_V0(self.raw()) }
-    }
-
-    pub fn stream_data_length(&self) -> u16 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetStreamDataLength_V0(self.raw()) }
-    }
-
-    pub fn evt(&self) -> u8 {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_GetEvt_V0(self.raw()) }
-    }
-
-    /// `sv`: `stream_id` carries a meaningful value.
-    pub fn is_stream_id_valid(&self) -> bool {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsSv_V0(self.raw()) }
-    }
-
-    /// `mr`: the media clock has been reset since the last PDU.
-    pub fn is_media_reset(&self) -> bool {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsMr_V0(self.raw()) }
-    }
-
-    /// `tv`: `avtp_timestamp` carries a meaningful value.
-    pub fn is_timestamp_valid(&self) -> bool {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsTv_V0(self.raw()) }
-    }
-
-    /// `tu`: the talker is uncertain about the timestamp.
-    pub fn is_timestamp_uncertain(&self) -> bool {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsTu_V0(self.raw()) }
-    }
-
-    /// `sp`: sparse timestamping (only some PDUs carry valid timestamps).
-    pub fn is_sparse_timestamp(&self) -> bool {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsSp_V0(self.raw()) }
-    }
-
-    /// Structural validity check (subtype and stream data length
-    /// consistent with the buffer size).
-    pub fn is_valid(&self) -> bool {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_IsValid(self.raw(), self.0.as_ref().len()) }
+pdu_struct! {
+    /// AAF PCM stream PDU with a version 1 header: 64-bit AVTP
+    /// timestamp and the PTP grandmaster identity.
+    pub struct PcmV1 {
+        c_type: sys::Avtp_PcmV1_t,
+        header_len: HEADER_LEN_V1 = sys::AVTP_PCM_HEADER_LEN_V1,
+        init: sys::Avtp_Pcm_InitV1,
     }
 }
 
-impl<B: AsRef<[u8]> + AsMut<[u8]>> Pcm<B> {
-    pub fn set_version(&mut self, value: u8) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe {
-            sys::Avtp_CommonHeader_SetVersion(
-                self.raw_mut() as *mut sys::Avtp_CommonHeader_t,
-                value,
-            )
-        };
+stream_versions! {
+    /// A received AAF PCM frame, wrapped in the type that matches its
+    /// AVTPDU version byte.
+    pub enum Pcm {
+        v0: PcmV0,
+        v1: PcmV1,
+        c_type: sys::Avtp_Pcm_t,
+        is_valid: sys::Avtp_Pcm_IsValid,
+        is_valid_doc: "subtype and stream data length consistent with the buffer size",
     }
+}
 
-    pub fn set_sequence_num(&mut self, value: u8) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetSequenceNum_V0(self.raw_mut(), value.into()) };
+stream_accessors! {
+    impl PcmV0 {
+        read {
+            stream_id: u64 = sys::Avtp_Pcm_GetStreamId_V0;
+            channels_per_frame: u16 = sys::Avtp_Pcm_GetChannelsPerFrame_V0;
+            bit_depth: u8 = sys::Avtp_Pcm_GetBitDepth_V0;
+            stream_data_length: u16 = sys::Avtp_Pcm_GetStreamDataLength_V0;
+            evt: u8 = sys::Avtp_Pcm_GetEvt_V0;
+            /// `sv`: `stream_id` carries a meaningful value.
+            is_stream_id_valid: bool = sys::Avtp_Pcm_IsSv_V0;
+            /// `mr`: the media clock has been reset since the last PDU.
+            is_media_reset: bool = sys::Avtp_Pcm_IsMr_V0;
+            /// `tv`: `avtp_timestamp` carries a meaningful value.
+            is_timestamp_valid: bool = sys::Avtp_Pcm_IsTv_V0;
+            /// `tu`: the talker is uncertain about the timestamp.
+            is_timestamp_uncertain: bool = sys::Avtp_Pcm_IsTu_V0;
+            /// `sp`: sparse timestamping (only some PDUs carry valid timestamps).
+            is_sparse_timestamp: bool = sys::Avtp_Pcm_IsSp_V0;
+        }
+        read_map {
+            format: Result<Format> = sys::Avtp_Pcm_GetFormat_V0 => Format::from_sys;
+            sample_rate: Result<SampleRate> = sys::Avtp_Pcm_GetNsr_V0 => SampleRate::from_sys;
+            sequence_num: u8 = sys::Avtp_Pcm_GetSequenceNum_V0 => seq_v0;
+            avtp_timestamp: u32 = sys::Avtp_Pcm_GetAvtpTimestamp_V0 => ts_v0;
+        }
+        write {
+            set_stream_id: u64 = sys::Avtp_Pcm_SetStreamId_V0;
+            set_channels_per_frame: u16 = sys::Avtp_Pcm_SetChannelsPerFrame_V0;
+            set_bit_depth: u8 = sys::Avtp_Pcm_SetBitDepth_V0;
+            set_stream_data_length: u16 = sys::Avtp_Pcm_SetStreamDataLength_V0;
+            set_evt: u8 = sys::Avtp_Pcm_SetEvt_V0;
+            set_stream_id_valid: bool = sys::Avtp_Pcm_SetSv_V0;
+            set_media_reset: bool = sys::Avtp_Pcm_SetMr_V0;
+            set_timestamp_valid: bool = sys::Avtp_Pcm_SetTv_V0;
+            set_timestamp_uncertain: bool = sys::Avtp_Pcm_SetTu_V0;
+            set_sparse_timestamp: bool = sys::Avtp_Pcm_SetSp_V0;
+        }
+        write_map {
+            set_format: Format = sys::Avtp_Pcm_SetFormat_V0 => Format::as_sys;
+            set_sample_rate: SampleRate = sys::Avtp_Pcm_SetNsr_V0 => SampleRate::as_sys;
+            set_sequence_num: u8 = sys::Avtp_Pcm_SetSequenceNum_V0 => u32::from;
+            set_avtp_timestamp: u32 = sys::Avtp_Pcm_SetAvtpTimestamp_V0 => u64::from;
+        }
     }
+}
 
-    pub fn set_stream_id(&mut self, value: u64) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetStreamId_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_avtp_timestamp(&mut self, value: u32) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetAvtpTimestamp_V0(self.raw_mut(), value.into()) };
-    }
-
-    pub fn set_format(&mut self, value: Format) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetFormat_V0(self.raw_mut(), value.as_sys()) };
-    }
-
-    pub fn set_sample_rate(&mut self, value: SampleRate) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetNsr_V0(self.raw_mut(), value.as_sys()) };
-    }
-
-    pub fn set_channels_per_frame(&mut self, value: u16) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetChannelsPerFrame_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_bit_depth(&mut self, value: u8) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetBitDepth_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_stream_data_length(&mut self, value: u16) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetStreamDataLength_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_evt(&mut self, value: u8) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetEvt_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_stream_id_valid(&mut self, value: bool) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetSv_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_media_reset(&mut self, value: bool) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetMr_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_timestamp_valid(&mut self, value: bool) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetTv_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_timestamp_uncertain(&mut self, value: bool) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetTu_V0(self.raw_mut(), value) };
-    }
-
-    pub fn set_sparse_timestamp(&mut self, value: bool) {
-        // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Pcm_SetSp_V0(self.raw_mut(), value) };
+stream_accessors! {
+    impl PcmV1 {
+        read {
+            sequence_num: u32 = sys::Avtp_Pcm_GetSequenceNum_V1;
+            stream_id: u64 = sys::Avtp_Pcm_GetStreamId_V1;
+            avtp_timestamp: u64 = sys::Avtp_Pcm_GetAvtpTimestamp_V1;
+            /// Identity of the PTP grandmaster clock this stream is locked to.
+            ptp_grandmaster_identity: u64 = sys::Avtp_Pcm_GetPtpGrandmasterIdentity_V1;
+            channels_per_frame: u16 = sys::Avtp_Pcm_GetChannelsPerFrame_V1;
+            bit_depth: u8 = sys::Avtp_Pcm_GetBitDepth_V1;
+            stream_data_length: u16 = sys::Avtp_Pcm_GetStreamDataLength_V1;
+            evt: u8 = sys::Avtp_Pcm_GetEvt_V1;
+            /// `sv`: `stream_id` carries a meaningful value.
+            is_stream_id_valid: bool = sys::Avtp_Pcm_IsSv_V1;
+            /// `mr`: the media clock has been reset since the last PDU.
+            is_media_reset: bool = sys::Avtp_Pcm_IsMr_V1;
+            /// `tv`: `avtp_timestamp` carries a meaningful value.
+            is_timestamp_valid: bool = sys::Avtp_Pcm_IsTv_V1;
+            /// `tu`: the talker is uncertain about the timestamp.
+            is_timestamp_uncertain: bool = sys::Avtp_Pcm_IsTu_V1;
+            /// `sp`: sparse timestamping (only some PDUs carry valid timestamps).
+            is_sparse_timestamp: bool = sys::Avtp_Pcm_IsSp_V1;
+        }
+        read_map {
+            format: Result<Format> = sys::Avtp_Pcm_GetFormat_V1 => Format::from_sys;
+            sample_rate: Result<SampleRate> = sys::Avtp_Pcm_GetNsr_V1 => SampleRate::from_sys;
+        }
+        write {
+            set_sequence_num: u32 = sys::Avtp_Pcm_SetSequenceNum_V1;
+            set_stream_id: u64 = sys::Avtp_Pcm_SetStreamId_V1;
+            set_avtp_timestamp: u64 = sys::Avtp_Pcm_SetAvtpTimestamp_V1;
+            set_ptp_grandmaster_identity: u64 = sys::Avtp_Pcm_SetPtpGrandmasterIdentity_V1;
+            set_channels_per_frame: u16 = sys::Avtp_Pcm_SetChannelsPerFrame_V1;
+            set_bit_depth: u8 = sys::Avtp_Pcm_SetBitDepth_V1;
+            set_stream_data_length: u16 = sys::Avtp_Pcm_SetStreamDataLength_V1;
+            set_evt: u8 = sys::Avtp_Pcm_SetEvt_V1;
+            set_stream_id_valid: bool = sys::Avtp_Pcm_SetSv_V1;
+            set_media_reset: bool = sys::Avtp_Pcm_SetMr_V1;
+            set_timestamp_valid: bool = sys::Avtp_Pcm_SetTv_V1;
+            set_timestamp_uncertain: bool = sys::Avtp_Pcm_SetTu_V1;
+            set_sparse_timestamp: bool = sys::Avtp_Pcm_SetSp_V1;
+        }
+        write_map {
+            set_format: Format = sys::Avtp_Pcm_SetFormat_V1 => Format::as_sys;
+            set_sample_rate: SampleRate = sys::Avtp_Pcm_SetNsr_V1 => SampleRate::as_sys;
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Subtype;
     use crate::pdu::assert_discriminants_match_upstream;
+    use crate::pdu::read_quadlet;
+    use crate::{CommonHeader, Error, Subtype};
 
     #[test]
-    fn init_sets_aaf_subtype_and_stream_valid() {
-        let mut buf = [0u8; HEADER_LEN];
-        let pcm = Pcm::initialized(&mut buf[..]).unwrap();
+    fn init_v0_sets_aaf_subtype_and_stream_valid() {
+        let mut buf = [0u8; HEADER_LEN_V0];
+        let pcm = PcmV0::initialized(&mut buf[..]).unwrap();
         assert_eq!(pcm.subtype(), Subtype::Aaf.as_u8());
+        assert_eq!(pcm.version(), 0);
         assert!(pcm.is_stream_id_valid());
+    }
+
+    /// Ported from upstream `unit/test-pcm.c::pcm_init_v1`: InitV1
+    /// writes the subtype byte, the `sv` and version bits, and nothing
+    /// else.
+    #[test]
+    fn init_v1_sets_subtype_version_and_stream_valid() {
+        let mut buf = [0u8; HEADER_LEN_V1];
+        let pcm = PcmV1::initialized(&mut buf[..]).unwrap();
+        assert_eq!(pcm.subtype(), Subtype::Aaf.as_u8());
+        assert_eq!(pcm.version(), 1);
+        assert!(pcm.is_stream_id_valid());
+        // sv = 1, version = 1 in the second header byte.
+        assert_eq!(buf[1], 0x90);
+        assert!(buf[2..].iter().all(|&b| b == 0));
     }
 
     #[test]
@@ -338,8 +298,8 @@ mod tests {
 
     #[test]
     fn format_and_sample_rate_round_trip() {
-        let mut backing = [0u8; HEADER_LEN];
-        let mut pcm = Pcm::initialized(&mut backing[..]).unwrap();
+        let mut backing = [0u8; HEADER_LEN_V0];
+        let mut pcm = PcmV0::initialized(&mut backing[..]).unwrap();
         pcm.set_format(Format::Int24);
         pcm.set_sample_rate(SampleRate::Hz48000);
         pcm.set_channels_per_frame(8);
@@ -349,12 +309,19 @@ mod tests {
         assert_eq!(pcm.sample_rate().unwrap(), SampleRate::Hz48000);
         assert_eq!(pcm.channels_per_frame(), 8);
         assert_eq!(pcm.bit_depth(), 24);
+
+        let mut backing = [0u8; HEADER_LEN_V1];
+        let mut pcm = PcmV1::initialized(&mut backing[..]).unwrap();
+        pcm.set_format(Format::Int24);
+        pcm.set_sample_rate(SampleRate::Hz48000);
+        assert_eq!(pcm.format().unwrap(), Format::Int24);
+        assert_eq!(pcm.sample_rate().unwrap(), SampleRate::Hz48000);
     }
 
     #[test]
-    fn header_round_trip() {
-        let mut backing = [0u8; HEADER_LEN];
-        let mut pcm = Pcm::initialized(&mut backing[..]).unwrap();
+    fn header_round_trip_v0() {
+        let mut backing = [0u8; HEADER_LEN_V0];
+        let mut pcm = PcmV0::initialized(&mut backing[..]).unwrap();
         pcm.set_sequence_num(0x77);
         pcm.set_stream_id(0x0011_2233_4455_6677);
         pcm.set_avtp_timestamp(0xDEAD_BEEF);
@@ -370,10 +337,159 @@ mod tests {
         assert!(pcm.is_sparse_timestamp());
     }
 
+    /// Ported from upstream `unit/test-pcm.c::pcm_typed_named` (the
+    /// version 1 half): the named accessors round-trip.
+    #[test]
+    fn header_round_trip_v1() {
+        let mut backing = [0u8; HEADER_LEN_V1];
+        let mut pcm = PcmV1::initialized(&mut backing[..]).unwrap();
+        pcm.set_sequence_num(0x1234_5678);
+        pcm.set_stream_id(0x1122_3344_5566_7788);
+        pcm.set_avtp_timestamp(0x99AA_BBCC_DDEE_FF00);
+        pcm.set_ptp_grandmaster_identity(0x0F1E_2D3C_4B5A_6978);
+        pcm.set_stream_data_length(192);
+        pcm.set_timestamp_valid(true);
+
+        assert_eq!(pcm.sequence_num(), 0x1234_5678);
+        assert_eq!(pcm.stream_id(), 0x1122_3344_5566_7788);
+        assert_eq!(pcm.avtp_timestamp(), 0x99AA_BBCC_DDEE_FF00);
+        assert_eq!(pcm.ptp_grandmaster_identity(), 0x0F1E_2D3C_4B5A_6978);
+        assert_eq!(pcm.stream_data_length(), 192);
+        assert!(pcm.is_timestamp_valid());
+    }
+
+    /// Ported from upstream `unit/test-pcm.c::pcm_v1_layout`: field
+    /// offsets within the version 1 header, as quadlets. Reads go
+    /// through the wrapper because it holds the mutable borrow of the
+    /// backing buffer.
+    #[test]
+    fn v1_layout() {
+        let mut buf = [0u8; HEADER_LEN_V1];
+        let mut pcm = PcmV1::initialized(&mut buf[..]).unwrap();
+
+        pcm.set_sequence_num(0x1234_5678);
+        assert_eq!(pcm.sequence_num(), 0x1234_5678);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 3), 0x1234_5678);
+
+        pcm.set_avtp_timestamp(0x1122_3344_5566_7788);
+        assert_eq!(pcm.avtp_timestamp(), 0x1122_3344_5566_7788);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 4), 0x1122_3344);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 5), 0x5566_7788);
+
+        pcm.set_ptp_grandmaster_identity(0x99AA_BBCC_DDEE_FF00);
+        assert_eq!(pcm.ptp_grandmaster_identity(), 0x99AA_BBCC_DDEE_FF00);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 6), 0x99AA_BBCC);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 7), 0xDDEE_FF00);
+
+        pcm.set_format(Format::Int16);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 8), 0x0400_0000);
+
+        pcm.set_sample_rate(SampleRate::Hz48000);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 8), 0x0450_0000);
+
+        pcm.set_channels_per_frame(0x2AA);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 8), 0x0452_AA00);
+
+        pcm.set_bit_depth(0xA5);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 8), 0x0452_AAA5);
+
+        pcm.set_stream_data_length(0xAAAA);
+        pcm.set_sparse_timestamp(true);
+        pcm.set_evt(0xA);
+        assert_eq!(read_quadlet(pcm.as_bytes(), 9), 0xAAAA_1A00);
+    }
+
     #[test]
     fn rejects_short_buffer() {
         assert!(matches!(
-            Pcm::new(&[0u8; HEADER_LEN - 1][..]),
+            PcmV0::new(&[0u8; HEADER_LEN_V0 - 1][..]),
+            Err(Error::BufferTooSmall { .. })
+        ));
+        assert!(matches!(
+            PcmV1::new(&[0u8; HEADER_LEN_V1 - 1][..]),
+            Err(Error::BufferTooSmall { .. })
+        ));
+    }
+
+    /// Ported from upstream `unit/test-pcm.c::pcm_is_valid`. A valid PCM
+    /// frame carries a positive `channels_per_frame` and a non-zero
+    /// `bit_depth` (upstream's `init_valid_pcm` helper sets 2 and 16),
+    /// so the positive case sets them explicitly.
+    #[test]
+    fn is_valid_corruption_cases() {
+        let mut backing = [0u8; 64];
+        let mut pcm = PcmV0::initialized(&mut backing[..]).unwrap();
+        pcm.set_channels_per_frame(2);
+        pcm.set_bit_depth(16);
+        assert!(pcm.is_valid());
+
+        // channels_per_frame shall be a positive integer.
+        pcm.set_channels_per_frame(0);
+        assert!(!pcm.is_valid());
+
+        // bit_depth shall not be zero.
+        pcm.set_channels_per_frame(2);
+        pcm.set_bit_depth(0);
+        assert!(!pcm.is_valid());
+
+        let zeroed = [0u8; 64];
+        let pcm = PcmV0::new(&zeroed[..]).unwrap();
+        assert!(!pcm.is_valid());
+    }
+
+    /// Ported from upstream `unit/test-pcm.c::pcm_is_valid` (version 1
+    /// half): a version 1 frame needs the same non-zero channel count
+    /// and bit depth, with no payload required.
+    #[test]
+    fn v1_is_valid_with_empty_payload() {
+        let mut backing = [0u8; HEADER_LEN_V1];
+        let mut pcm = PcmV1::initialized(&mut backing[..]).unwrap();
+        pcm.set_channels_per_frame(2);
+        pcm.set_bit_depth(16);
+        assert!(pcm.is_valid());
+
+        pcm.set_channels_per_frame(0);
+        assert!(!pcm.is_valid());
+    }
+
+    /// The version gate: a wrapper over a frame that declares the other
+    /// version reports invalid, whatever the buffer holds.
+    #[test]
+    fn is_valid_rejects_version_mismatch() {
+        let mut backing = [0u8; 64];
+
+        let _ = PcmV1::initialized(&mut backing[..]).unwrap();
+        let v0 = PcmV0::new(&backing[..]).unwrap();
+        assert!(!v0.is_valid());
+
+        let _ = PcmV0::initialized(&mut backing[..]).unwrap();
+        let v1 = PcmV1::new(&backing[..]).unwrap();
+        assert!(!v1.is_valid());
+    }
+
+    #[test]
+    fn enum_dispatches_on_version() {
+        let mut backing = [0u8; 64];
+
+        let _ = PcmV0::initialized(&mut backing[..]).unwrap();
+        assert!(matches!(Pcm::new(&backing[..]), Ok(Pcm::V0(_))));
+
+        let _ = PcmV1::initialized(&mut backing[..]).unwrap();
+        assert!(matches!(Pcm::new(&backing[..]), Ok(Pcm::V1(_))));
+
+        // This crate does not support version 2.
+        {
+            let mut hdr = CommonHeader::new(&mut backing[..]).unwrap();
+            hdr.set_version(2);
+        }
+        assert!(matches!(
+            Pcm::new(&backing[..]),
+            Err(Error::InvalidValue { .. })
+        ));
+
+        // Shorter than a common header: the version byte is unreadable.
+        assert!(matches!(
+            Pcm::new(&[0u8; sys::AVTPDU_COMMON_LEN as usize - 1][..]),
             Err(Error::BufferTooSmall { .. })
         ));
     }

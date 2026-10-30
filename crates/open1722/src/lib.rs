@@ -9,7 +9,14 @@
 //!
 //! # Supported formats
 //!
-//! Stream formats from IEEE Std 1722-2016:
+//! Stream formats:
+//!
+//! Each stream format has one wrapper per AVTPDU version: the `XxxV0`
+//! types follow IEEE Std 1722-2016 and the `XxxV1` types follow
+//! IEEE Std 1722-2025, which moved or widened several header fields.
+//! Listeners parse with the `Xxx` enum ([`acf::tscf::Tscf`], [`Crf`],
+//! ...), which reads the version byte and wraps the frame in the
+//! matching wrapper.
 //!
 //! - AAF (PCM audio, see [`aaf::Pcm`])
 //! - CRF (clock reference, see [`Crf`])
@@ -135,9 +142,9 @@ mod pdu;
 pub mod rvf;
 mod udp;
 
-pub use rvf::{Rvf, RvfRawHeader};
+pub use crf::{Crf, CrfV0, CrfV1};
 
-pub use crf::Crf;
+pub use rvf::{Rvf, RvfRawHeader, RvfV0, RvfV1};
 
 pub use acf_common::AcfCommon;
 pub use common::{AcfMsgType, Subtype};
