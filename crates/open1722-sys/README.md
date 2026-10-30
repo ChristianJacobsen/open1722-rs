@@ -13,7 +13,7 @@ Most users want the higher-level
 bindings in a safe Rust API. Use this crate directly only if you need
 unfiltered access to the C library surface.
 
-Pinned to upstream tag `v0.9.6` (September 2026).
+Pinned to upstream tag `v0.9.7` (October 2026).
 
 ## License
 

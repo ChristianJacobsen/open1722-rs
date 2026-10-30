@@ -283,9 +283,9 @@ impl Colorspace {
 
 pdu_struct! {
     pub struct Rvf {
-        c_type: sys::Avtp_Rvf_t,
-        header_len: sys::AVTP_RVF_HEADER_LEN,
-        init: sys::Avtp_Rvf_Init,
+        c_type: sys::Avtp_RvfV0_t,
+        header_len: sys::AVTP_RVF_HEADER_LEN_V0,
+        init: sys::Avtp_Rvf_InitV0,
     }
 }
 
@@ -301,38 +301,40 @@ impl<B: AsRef<[u8]>> Rvf<B> {
     }
 
     pub fn sequence_num(&self) -> u8 {
+        // The version 0 field is 8 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetSequenceNum(self.raw()) }
+        unsafe { sys::Avtp_Rvf_GetSequenceNum_V0(self.raw()) as u8 }
     }
 
     pub fn stream_id(&self) -> u64 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetStreamId(self.raw()) }
+        unsafe { sys::Avtp_Rvf_GetStreamId_V0(self.raw()) }
     }
 
     pub fn avtp_timestamp(&self) -> u32 {
+        // The version 0 field is 32 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetAvtpTimestamp(self.raw()) }
+        unsafe { sys::Avtp_Rvf_GetAvtpTimestamp_V0(self.raw()) as u32 }
     }
 
     pub fn active_pixels(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetActivePixels(self.raw()) }
+        unsafe { sys::Avtp_Rvf_GetActivePixels_V0(self.raw()) }
     }
 
     pub fn total_lines(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetTotalLines(self.raw()) }
+        unsafe { sys::Avtp_Rvf_GetTotalLines_V0(self.raw()) }
     }
 
     pub fn stream_data_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetStreamDataLength(self.raw()) }
+        unsafe { sys::Avtp_Rvf_GetStreamDataLength_V0(self.raw()) }
     }
 
     pub fn evt(&self) -> u8 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_GetEvt(self.raw()) }
+        unsafe { sys::Avtp_Rvf_GetEvt_V0(self.raw()) }
     }
 
     /// Structural validity check: subtype, stream data length covering
@@ -345,55 +347,55 @@ impl<B: AsRef<[u8]>> Rvf<B> {
     /// `pd` bit; semantics are spec-defined.
     pub fn is_pd(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsPd(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsPd_V0(self.raw()) }
     }
 
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsSv(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsSv_V0(self.raw()) }
     }
 
     /// `mr`: the media clock has been reset since the last PDU.
     pub fn is_media_reset(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsMr(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsMr_V0(self.raw()) }
     }
 
     /// `tv`: `avtp_timestamp` carries a meaningful value.
     pub fn is_timestamp_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsTv(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsTv_V0(self.raw()) }
     }
 
     /// `tu`: the talker is uncertain about the timestamp.
     pub fn is_timestamp_uncertain(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsTu(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsTu_V0(self.raw()) }
     }
 
     /// `ap` bit; semantics are spec-defined (see IEEE Std 1722-2016).
     pub fn is_ap(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsAp(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsAp_V0(self.raw()) }
     }
 
     /// `f` bit; semantics are spec-defined.
     pub fn is_f(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsF(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsF_V0(self.raw()) }
     }
 
     /// `ef` bit; semantics are spec-defined.
     pub fn is_ef(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsEf(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsEf_V0(self.raw()) }
     }
 
     /// `i` bit; spec-defined, commonly used to indicate interlaced video.
     pub fn is_i(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_IsI(self.raw()) }
+        unsafe { sys::Avtp_Rvf_IsI_V0(self.raw()) }
     }
 }
 
@@ -410,82 +412,82 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Rvf<B> {
 
     pub fn set_sequence_num(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetSequenceNum(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetSequenceNum_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_stream_id(&mut self, value: u64) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetStreamId(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetStreamId_V0(self.raw_mut(), value) };
     }
 
     pub fn set_avtp_timestamp(&mut self, value: u32) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetAvtpTimestamp(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetAvtpTimestamp_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_active_pixels(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetActivePixels(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetActivePixels_V0(self.raw_mut(), value) };
     }
 
     pub fn set_total_lines(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetTotalLines(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetTotalLines_V0(self.raw_mut(), value) };
     }
 
     pub fn set_stream_data_length(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetStreamDataLength(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetStreamDataLength_V0(self.raw_mut(), value) };
     }
 
     pub fn set_evt(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetEvt(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetEvt_V0(self.raw_mut(), value) };
     }
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetSv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetSv_V0(self.raw_mut(), value) };
     }
 
     pub fn set_media_reset(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetMr(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetMr_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetTv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetTv_V0(self.raw_mut(), value) };
     }
 
     pub fn set_timestamp_uncertain(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetTu(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetTu_V0(self.raw_mut(), value) };
     }
 
     pub fn set_ap(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetAp(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetAp_V0(self.raw_mut(), value) };
     }
 
     pub fn set_f(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetF(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetF_V0(self.raw_mut(), value) };
     }
 
     pub fn set_ef(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetEf(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetEf_V0(self.raw_mut(), value) };
     }
 
     pub fn set_i(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetI(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetI_V0(self.raw_mut(), value) };
     }
 
     pub fn set_pd(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Rvf_SetPd(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Rvf_SetPd_V0(self.raw_mut(), value) };
     }
 }
 

@@ -11,7 +11,7 @@ use crate::{Result, Subtype};
 pdu_struct! {
     pub struct CommonHeader {
         c_type: sys::Avtp_CommonHeader_t,
-        header_len: sys::AVTP_COMMON_HEADER_LEN,
+        header_len: sys::AVTPDU_COMMON_LEN,
     }
 }
 

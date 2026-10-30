@@ -7,9 +7,9 @@ use crate::pdu::pdu_struct;
 
 pdu_struct! {
     pub struct Ntscf {
-        c_type: sys::Avtp_Ntscf_t,
-        header_len: sys::AVTP_NTSCF_HEADER_LEN,
-        init: sys::Avtp_Ntscf_Init,
+        c_type: sys::Avtp_NtscfV0_t,
+        header_len: sys::AVTP_NTSCF_HEADER_LEN_V0,
+        init: sys::Avtp_Ntscf_InitV0,
     }
 }
 
@@ -25,24 +25,25 @@ impl<B: AsRef<[u8]>> Ntscf<B> {
     }
 
     pub fn sequence_num(&self) -> u8 {
+        // The version 0 field is 8 bits wide, so the cast cannot truncate.
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_GetSequenceNum(self.raw()) }
+        unsafe { sys::Avtp_Ntscf_GetSequenceNum_V0(self.raw()) as u8 }
     }
 
     pub fn stream_id(&self) -> u64 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_GetStreamId(self.raw()) }
+        unsafe { sys::Avtp_Ntscf_GetStreamId_V0(self.raw()) }
     }
 
     pub fn ntscf_data_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_GetNtscfDataLength(self.raw()) }
+        unsafe { sys::Avtp_Ntscf_GetNtscfDataLength_V0(self.raw()) }
     }
 
     /// `sv`: `stream_id` carries a meaningful value.
     pub fn is_stream_id_valid(&self) -> bool {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_IsSv(self.raw()) }
+        unsafe { sys::Avtp_Ntscf_IsSv_V0(self.raw()) }
     }
 
     /// NTSCF data slice, clamped to the buffer in case the declared length
@@ -74,22 +75,22 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Ntscf<B> {
 
     pub fn set_sequence_num(&mut self, value: u8) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_SetSequenceNum(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Ntscf_SetSequenceNum_V0(self.raw_mut(), value.into()) };
     }
 
     pub fn set_stream_id(&mut self, value: u64) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_SetStreamId(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Ntscf_SetStreamId_V0(self.raw_mut(), value) };
     }
 
     pub fn set_ntscf_data_length(&mut self, value: u16) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_SetNtscfDataLength(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Ntscf_SetNtscfDataLength_V0(self.raw_mut(), value) };
     }
 
     pub fn set_stream_id_valid(&mut self, value: bool) {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
-        unsafe { sys::Avtp_Ntscf_SetSv(self.raw_mut(), value) };
+        unsafe { sys::Avtp_Ntscf_SetSv_V0(self.raw_mut(), value) };
     }
 }
 
