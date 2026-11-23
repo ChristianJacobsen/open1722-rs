@@ -7,6 +7,7 @@ pub mod can_brief_v2;
 pub mod can_v2;
 pub mod can_xl;
 pub mod can_xl_brief;
+pub mod crc;
 pub mod custom;
 pub mod flexray;
 pub mod gbb;

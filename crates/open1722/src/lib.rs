@@ -42,6 +42,7 @@
 //! - [`acf::gbb`], [`acf::abb`]: IEEE 1722-2025 generic / abbreviated
 //!   byte bus.
 //! - [`acf::gisf`]: IEEE 1722-2025 generic image sensor format.
+//! - [`acf::crc`]: IEEE 1722-2025 CRC message.
 //!
 //! Custom formats (outside IEEE Std 1722-2016):
 //!
