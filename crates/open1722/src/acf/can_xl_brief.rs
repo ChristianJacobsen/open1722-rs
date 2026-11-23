@@ -89,7 +89,7 @@ impl<B: AsRef<[u8]>> CanXlBrief<B> {
     }
 
     /// Payload length in bytes (excludes header and trailing pad).
-    pub fn payload_length(&self) -> u8 {
+    pub fn payload_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_CanXlBrief_GetPayloadLength(self.raw()) }
     }
@@ -240,6 +240,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> CanXlBrief<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pdu::QUADLET;
     use crate::{AcfMsgType, Error};
 
     #[test]
@@ -330,5 +331,23 @@ mod tests {
         let zeroed = [0u8; 64];
         let can = CanXlBrief::new(&zeroed[..]).unwrap();
         assert!(!can.is_valid());
+    }
+
+    /// Ported from upstream `unit/test-canxl-brief.c::Test_CanXlBrief_CreateAcfMessage_LargePayload`.
+    #[test]
+    fn create_acf_message_large_payload() {
+        // Wider than a u8 can count, and one byte short of a quadlet.
+        const PAYLOAD_LEN: usize = 299;
+        const PAD: u8 = 1;
+        let payload: [u8; PAYLOAD_LEN] = core::array::from_fn(|i| i as u8);
+        let mut backing = [0u8; HEADER_LEN + PAYLOAD_LEN.next_multiple_of(QUADLET)];
+        let mut can = CanXlBrief::initialized(&mut backing[..]).unwrap();
+        can.create_acf_message(0x5FF, 0xBFFF_FFFF, 0xBF, &payload)
+            .unwrap();
+
+        assert_eq!(can.payload_length(), PAYLOAD_LEN as u16);
+        assert_eq!(can.pad(), PAD);
+        assert_eq!(can.payload(), &payload[..]);
+        assert!(can.is_valid());
     }
 }
