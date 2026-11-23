@@ -200,7 +200,7 @@ dependencies = [
 
 [[package]]
 name = "open1722"
-version = "0.9.7"
+version = "0.9.8"
 dependencies = [
  "open1722-sys",
  "thiserror",
@@ -217,7 +217,7 @@ dependencies = [
 
 [[package]]
 name = "open1722-sys"
-version = "0.9.7"
+version = "0.9.8"
 dependencies = [
  "bindgen",
  "cc",

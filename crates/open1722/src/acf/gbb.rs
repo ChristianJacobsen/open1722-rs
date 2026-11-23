@@ -104,7 +104,7 @@ impl<B: AsRef<[u8]>> Gbb<B> {
     }
 
     /// Payload length in bytes (excludes header and trailing pad).
-    pub fn payload_length(&self) -> u8 {
+    pub fn payload_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Gbb_GetPayloadLength(self.raw()) }
     }
@@ -265,6 +265,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Gbb<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pdu::QUADLET;
     use crate::{AcfMsgType, Error};
 
     #[test]
@@ -358,5 +359,22 @@ mod tests {
         let zeroed = [0u8; 64];
         let gbb = Gbb::new(&zeroed[..]).unwrap();
         assert!(!gbb.is_valid());
+    }
+
+    /// Ported from upstream `unit/test-gbb.c::Test_Gbb_CreateAcfMessage_LargePayload`.
+    #[test]
+    fn create_acf_message_large_payload() {
+        // Wider than a u8 can count, and one byte short of a quadlet.
+        const PAYLOAD_LEN: usize = 299;
+        const PAD: u8 = 1;
+        let payload: [u8; PAYLOAD_LEN] = core::array::from_fn(|i| i as u8);
+        let mut backing = [0u8; HEADER_LEN + PAYLOAD_LEN.next_multiple_of(QUADLET)];
+        let mut gbb = Gbb::initialized(&mut backing[..]).unwrap();
+        gbb.create_acf_message(0x5FF, true, 0xBF, &payload).unwrap();
+
+        assert_eq!(gbb.payload_length(), PAYLOAD_LEN as u16);
+        assert_eq!(gbb.pad(), PAD);
+        assert_eq!(gbb.payload(), &payload[..]);
+        assert!(gbb.is_valid());
     }
 }

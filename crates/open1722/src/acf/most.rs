@@ -83,7 +83,7 @@ impl<B: AsRef<[u8]>> Most<B> {
     }
 
     /// Payload length in bytes (excludes header and trailing pad).
-    pub fn payload_length(&self) -> u8 {
+    pub fn payload_length(&self) -> u16 {
         // SAFETY: buffer length validated >= HEADER_LEN at construction.
         unsafe { sys::Avtp_Most_GetPayloadLength(self.raw()) }
     }
@@ -207,6 +207,7 @@ impl<B: AsRef<[u8]> + AsMut<[u8]>> Most<B> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::pdu::QUADLET;
     use crate::{AcfMsgType, Error};
 
     #[test]
@@ -273,5 +274,23 @@ mod tests {
         malformed[1] = 8;
         let most = Most::new(&malformed[..]).unwrap();
         assert!(!most.is_valid());
+    }
+
+    /// Ported from upstream `unit/test-most.c::most_create_large_payload`.
+    #[test]
+    fn create_acf_message_large_payload() {
+        // Wider than a u8 can count, and one byte short of a quadlet.
+        const PAYLOAD_LEN: usize = 299;
+        const PAD: u8 = 1;
+        let payload: [u8; PAYLOAD_LEN] = core::array::from_fn(|i| i as u8);
+        let mut backing = [0u8; HEADER_LEN + PAYLOAD_LEN.next_multiple_of(QUADLET)];
+        let mut most = Most::initialized(&mut backing[..]).unwrap();
+        most.create_acf_message(0x1234, 0xAB, 0x12, 0x456, 0x0F, &payload)
+            .unwrap();
+
+        assert_eq!(most.payload_length(), PAYLOAD_LEN as u16);
+        assert_eq!(most.pad(), PAD);
+        assert_eq!(most.payload(), &payload[..]);
+        assert!(most.is_valid());
     }
 }
