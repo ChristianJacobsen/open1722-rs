@@ -57,6 +57,7 @@ AVTP Control Format (ACF) carriers and messages:
 - Sensor, Sensor Brief
 - GBB, ABB (IEEE 1722-2025 generic / abbreviated byte bus)
 - GISF (IEEE 1722-2025 generic image sensor format)
+- CRC (IEEE 1722-2025 CRC message)
 
 Custom formats (outside IEEE Std 1722-2016):
 

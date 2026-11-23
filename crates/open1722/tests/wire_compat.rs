@@ -17,6 +17,7 @@ use open1722::RvfV1;
 use open1722::Udp;
 use open1722::acf::{
     can::Can,
+    crc::{Crc, CrcType},
     custom::vss::{Data, Path, Vss},
     i2c::I2c,
     i2c_brief::I2cBrief,
@@ -122,6 +123,49 @@ fn can_create_acf_message_matches_c_lib() {
             false,
         );
         sys::Avtp_Can_SetCanBusId(pdu, 7);
+    }
+
+    assert_eq!(rust, c);
+}
+
+#[test]
+fn crc_create_acf_message_matches_c_lib() {
+    let mut rust = [0u8; PDU];
+    let mut crc = Crc::initialized(&mut rust[..]).unwrap();
+    crc.create_acf_message(CrcType::Crc32P4, 0x1122_3344)
+        .unwrap();
+
+    let mut c = [0u8; PDU];
+    unsafe {
+        let pdu = c.as_mut_ptr() as *mut sys::Avtp_Crc_t;
+        sys::Avtp_Crc_CreateAcfMessage(
+            pdu,
+            sys::Avtp_CrcType_t::AVTP_CRC_TYPE_CRC_32P4,
+            0x1122_3344,
+        );
+    }
+
+    assert_eq!(rust, c);
+}
+
+#[test]
+fn crc_user_payload_matches_c_lib() {
+    // Not a whole quadlet, so both sides must zero-fill the same tail.
+    let payload = [0x10u8, 0x20, 0x30, 0x40, 0x50, 0x60];
+
+    let mut rust = [0u8; PDU];
+    let mut crc = Crc::initialized(&mut rust[..]).unwrap();
+    crc.set_crc_type(CrcType::User);
+    crc.set_payload(&payload).unwrap();
+    crc.set_payload_length(payload.len() as u16).unwrap();
+
+    let mut c = [0u8; PDU];
+    unsafe {
+        let pdu = c.as_mut_ptr() as *mut sys::Avtp_Crc_t;
+        sys::Avtp_Crc_Init(pdu);
+        sys::Avtp_Crc_SetCrcType(pdu, sys::Avtp_CrcType_t::AVTP_CRC_TYPE_CRC_USER);
+        sys::Avtp_Crc_SetPayload(pdu, payload.as_ptr() as *mut u8, payload.len() as u16);
+        sys::Avtp_Crc_SetPayloadLength(pdu, payload.len() as u16);
     }
 
     assert_eq!(rust, c);
